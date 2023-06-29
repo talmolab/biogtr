@@ -17,23 +17,46 @@ keywords = ["gtr", "mot"]
 license = {text = "BSD-3-Clause"}
 classifiers = [
     "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
 ]
 dependencies = [
     "torch >= 2.0.0",
+    "torchvision",
     "lightning",
     "imageio",
+    "imageio-ffmpeg",
+    "av",
+    "albumentations",
+    "hydra-core",
+    "sleap-io"
 ]
-dynamic = ["version"]
+dynamic = ["version", "readme"]
 
 [tool.setuptools.dynamic]
 version = {attr = "biogtr.version.__version__"}
 readme = {file = ["README.md"]}
 
 [project.optional-dependencies]
-dev = ["pytest", "pytest-cov", "black", "pydocstyle", "toml", "twine", "build"]
+dev = [
+    "pytest",
+    "pytest-cov",
+    "black",
+    "pydocstyle",
+    "toml",
+    "twine",
+    "build"
+]
 
 [project.scripts]
 biogtr = "biogtr.cli:cli"
 
+[project.urls]
+Homepage = "https://github.com/talmolab/biogtr"
+Repository = "https://github.com/talmolab/biogtr"
+
 [tool.black]
 line-length = 88
+
+[pydocstyle]
+convention = "google"
+match-dir = "sleap_roots"

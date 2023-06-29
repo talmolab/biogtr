@@ -5,6 +5,7 @@ Used for training a single model or deploying a batch train job on RUNAI CLI
 from biogtr.config import Config
 from biogtr.datasets.tracking_dataset import TrackingDataset
 from biogtr.datasets.data_utils import view_training_batch
+from biogtr.models.model_utils import get_device
 from multiprocessing import cpu_count
 from omegaconf import DictConfig
 from pprint import pprint
@@ -15,16 +16,13 @@ import pytorch_lightning as pl
 import torch
 import torch.multiprocessing
 
-device = "cuda" if torch.cuda.is_available() else "cpu"
-
 # useful for longer training runs, but not for single iteration debugging
 # finds optimal hardware algs which has upfront time increase for first
 # iteration, quicker subsequent iterations
 
 # torch.backends.cudnn.benchmark = True
 
-# pytorch 2 logic - we set our device once here so we don't have to keep setting
-torch.set_default_device(device)
+device = get_device()
 
 
 @hydra.main(config_path="configs", config_name=None, version_base=None)
@@ -89,8 +87,15 @@ def main(cfg: DictConfig):
     _ = callbacks.append(pl.callbacks.LearningRateMonitor())
     _ = callbacks.append(train_cfg.get_early_stopping())
 
-    accelerator = "gpu" if torch.cuda.is_available() else "cpu"
-    devices = torch.cuda.device_count() if torch.cuda.is_available() else cpu_count()
+    if device == "cuda":
+        accelerator = "gpu"
+        devices = torch.cuda.device_count()
+    elif device == "mps":
+        accelerator = "mps"
+        devices = 1
+    else:
+        accelerator = "cpu"
+        devices = cpu_count()
 
     trainer = train_cfg.get_trainer(
         callbacks,

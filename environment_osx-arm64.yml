@@ -2,14 +2,12 @@ name: biogtr
 
 channels:
   - pytorch
-  - nvidia
   - conda-forge
   - defaults
 
 dependencies:
   - python=3.9
   - pytorch
-  - cpuonly
   - torchvision
   - lightning
   - imageio

@@ -126,7 +126,9 @@ class Embedding(torch.nn.Module):
         self.learn_pos_emb_num = params["learn_pos_emb_num"]
         self.over_boxes = params["over_boxes"]
 
-        pos_lookup = torch.nn.Embedding(self.learn_pos_emb_num * 4, self.features // 4)
+        pos_lookup = torch.nn.Embedding(
+            self.learn_pos_emb_num * 4, self.features // 4, device=boxes.device
+        )
 
         N = boxes.shape[0]
         boxes = boxes.view(N, 4)
@@ -181,7 +183,9 @@ class Embedding(torch.nn.Module):
         self.features = params["features"]
         self.learn_temp_emb_num = params["learn_temp_emb_num"]
 
-        temp_lookup = torch.nn.Embedding(self.learn_temp_emb_num, self.features)
+        temp_lookup = torch.nn.Embedding(
+            self.learn_temp_emb_num, self.features, device=times.device
+        )
 
         N = times.shape[0]
 

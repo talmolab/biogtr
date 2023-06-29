@@ -1,21 +1,16 @@
 """Script to run inference and get out tracks."""
 
 from biogtr.config import Config
-from biogtr.models.gtr_runner import GTRRunner
 from biogtr.datasets.tracking_dataset import TrackingDataset
+from biogtr.models.gtr_runner import GTRRunner
 from omegaconf import DictConfig
-from pprint import pprint
 from pathlib import Path
-
-import os
+from pprint import pprint
 import hydra
+import os
 import pandas as pd
 import pytorch_lightning as pl
 import torch
-
-device = "cuda" if torch.cuda.is_available() else "cpu"
-
-torch.set_default_device(device)
 
 
 def inference(

@@ -302,8 +302,11 @@ class Tracker:
         asso_nonk = asso_output[:, nonk_inds]  # (N_t, N_p)
 
         pred_boxes, _ = model_utils.get_boxes_times(instances)
+        pred_boxes = pred_boxes.cpu()
+
         k_boxes = pred_boxes[k_inds]  # n_k x 4
         nonk_boxes = pred_boxes[nonk_inds]  # Np x 4
+
         # TODO: Insert postprocessing.
 
         unique_ids = torch.unique(ids)  # (M,)
@@ -318,10 +321,11 @@ class Tracker:
         traj_score = post_processing.weight_decay_time(
             asso_nonk, self.decay_time, reid_features, T, k
         )
+
         traj_score = torch.mm(traj_score, id_inds.cpu())  # (N_t, M)
 
         instances[k]["decay_time_traj_score"] = pd.DataFrame(
-            deepcopy((traj_score).numpy()), columns=unique_ids.cpu().numpy()
+            traj_score.cpu().numpy(), columns=unique_ids.cpu().numpy()
         )
         instances[k]["decay_time_traj_score"].index.name = "Current Frame Instances"
         instances[k]["decay_time_traj_score"].columns.name = "Unique IDs"
@@ -347,6 +351,7 @@ class Tracker:
             )  # n_k x M
         else:
             last_ious = traj_score.new_zeros(traj_score.shape)
+
         traj_score = post_processing.weight_iou(traj_score, self.iou, last_ious.cpu())
 
         ################################################################################
@@ -383,8 +388,9 @@ class Tracker:
         instances[k]["matches"] = (match_i, match_j)
         instances[k]["pred_track_ids"] = track_ids
         instances[k]["final_traj_score"] = pd.DataFrame(
-            deepcopy((traj_score).numpy()), columns=unique_ids.cpu().numpy()
+            traj_score.cpu().numpy(), columns=unique_ids.cpu().numpy()
         )
         instances[k]["final_traj_score"].index.name = "Current Frame Instances"
         instances[k]["final_traj_score"].columns.name = "Unique IDs"
+
         return instances, id_count
