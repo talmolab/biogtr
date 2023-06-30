@@ -1,8 +1,9 @@
 # to implement - config class that handles getters/setters
 """Data structures for handling config parsing."""
+from biogtr.datasets.cell_tracking_dataset import CellTrackingDataset
+from biogtr.datasets.data_utils import FixedRandomSampler
 from biogtr.datasets.microscopy_dataset import MicroscopyDataset
 from biogtr.datasets.sleap_dataset import SleapDataset
-from biogtr.datasets.cell_tracking_dataset import CellTrackingDataset
 from biogtr.models.global_tracking_transformer import GlobalTrackingTransformer
 from biogtr.models.gtr_runner import GTRRunner
 from biogtr.models.model_utils import init_optimizer, init_scheduler, init_logger
@@ -180,12 +181,28 @@ class Config:
             )
         else:
             generator = None
+
+        if "sampler_params" in dataloader_params:
+            sampler_params = dataloader_params.sampler_params
+            sampler = FixedRandomSampler(dataset, **sampler_params)
+
+            # make sure shuffle is set to false if using fixed random sampler
+            if "shuffle" in dataloader_params:
+                dataloader_params["shuffle"] = False
+
+            # now remove from dataloader_params
+            del dataloader_params["sampler_params"]
+
+        else:
+            sampler = None
+
         return torch.utils.data.DataLoader(
             dataset=dataset,
             batch_size=1,
             pin_memory=pin_memory,
             generator=generator,
             collate_fn=dataset.no_batching_fn,
+            sampler=sampler,
             **dataloader_params,
         )
 

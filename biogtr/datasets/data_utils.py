@@ -2,7 +2,7 @@
 from PIL import Image
 from numpy.typing import ArrayLike
 from torchvision.transforms import functional as tvf
-from typing import List, Dict
+from typing import List, Dict, Optional
 from xml.etree import cElementTree as et
 import albumentations as A
 import math
@@ -473,3 +473,55 @@ def view_training_batch(
 
     plt.tight_layout()
     plt.show()
+
+
+class FixedRandomSampler(torch.utils.data.Sampler):
+    """Custom sampler class."""
+
+    def __init__(
+        self,
+        dataset: torch.utils.data.Dataset,
+        seed: int = 1234,
+        num_epochs: Optional[int] = None,
+    ):
+        """Custom sampler that generates indices using a fixed random seed.
+
+        Args:
+            dataset: The dataset to sample from.
+            seed: The seed for the random number generator. Default is 1234.
+            num_epochs: The number of epochs to generate indices
+                for. Allows for random sampling over epochs.
+        """
+        self.num_samples = len(dataset)
+        self.seed = seed
+        if num_epochs is None:
+            self.size = self.num_samples
+        else:
+            self.size = self.num_samples * num_epochs
+        self.indices = self._generate_indices()
+
+    def _generate_indices(self):
+        """Generates indices for sampling.
+
+        Returns:
+            indices (list): The list of generated indices.
+        """
+        rng = np.random.default_rng(seed=self.seed)
+        indices = rng.choice(range(self.num_samples), size=self.size, replace=True)
+        return indices
+
+    def __iter__(self):
+        """Iterator for generating indices.
+
+        Returns:
+            iterator (iter): An iterator of the generated indices.
+        """
+        return iter(self.indices)
+
+    def __len__(self):
+        """Returns the total number of indices.
+
+        Returns:
+            size (int): The total number of indices.
+        """
+        return self.size

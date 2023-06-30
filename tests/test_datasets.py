@@ -1,11 +1,12 @@
 """Test dataset logic."""
 from biogtr.datasets.base_dataset import BaseDataset
-from biogtr.datasets.data_utils import get_max_padding
+from biogtr.datasets.data_utils import get_max_padding, FixedRandomSampler
 from biogtr.datasets.microscopy_dataset import MicroscopyDataset
 from biogtr.datasets.sleap_dataset import SleapDataset
 from biogtr.datasets.tracking_dataset import TrackingDataset
 from biogtr.datasets.cell_tracking_dataset import CellTrackingDataset
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader, TensorDataset
+import numpy as np
 import pytest
 import torch
 
@@ -388,3 +389,38 @@ def test_augmentations(two_flies, ten_icy_particles):
     b = augs_instances[0]["crops"]
 
     assert not torch.all(a.eq(b))
+
+
+def test_fixed_random_sampler():
+    """Test FixedRandomSampler logic."""
+
+    # dummy dataset
+    dataset = TensorDataset(torch.rand(100, 10))
+
+    random_seed = 12345
+
+    # Test only seed
+    sampler = FixedRandomSampler(dataset, seed=random_seed)
+    sample_indices = list(iter(sampler))
+    assert len(sample_indices) == len(dataset)
+    assert len(set(sample_indices)) <= len(dataset)
+
+    # Test both seed and num_epochs
+    sampler = FixedRandomSampler(dataset, seed=random_seed, num_epochs=2)
+    sample_indices = list(iter(sampler))
+    assert len(sample_indices) == 2 * len(dataset)
+
+    # Test fixed seed sampling consistency
+    sampler1 = FixedRandomSampler(dataset, seed=random_seed)
+    sampler2 = FixedRandomSampler(dataset, seed=random_seed)
+    sample_indices1 = list(iter(sampler1))
+    sample_indices2 = list(iter(sampler2))
+    np.testing.assert_array_equal(sample_indices1, sample_indices2)
+
+    # Test different seeds give different results
+    sampler1 = FixedRandomSampler(dataset, seed=random_seed)
+    sampler2 = FixedRandomSampler(dataset, seed=random_seed + 1)
+    sample_indices1 = list(iter(sampler1))
+    sample_indices2 = list(iter(sampler2))
+    with pytest.raises(AssertionError):
+        np.testing.assert_array_equal(sample_indices1, sample_indices2)

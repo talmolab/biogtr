@@ -28,7 +28,7 @@ class CellTrackingDataset(BaseDataset):
         clip_length: int = 10,
         mode: str = "train",
         augmentations: Optional[dict] = None,
-        gt_list: str = None,
+        gt_list: Optional[str] = None,
     ):
         """Initialize CellTrackingDataset.
 

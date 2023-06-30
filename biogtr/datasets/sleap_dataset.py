@@ -1,14 +1,14 @@
 """Module containing logic for loading sleap datasets."""
-import albumentations as A
-import torch
-import imageio
-import numpy as np
-import sleap_io as sio
-import random
 from biogtr.datasets import data_utils
 from biogtr.datasets.base_dataset import BaseDataset
 from torchvision.transforms import functional as tvf
-from typing import List
+from typing import List, Optional
+import albumentations as A
+import imageio
+import numpy as np
+import random
+import sleap_io as sio
+import torch
 
 
 class SleapDataset(BaseDataset):
@@ -23,7 +23,7 @@ class SleapDataset(BaseDataset):
         chunk: bool = True,
         clip_length: int = 500,
         mode: str = "train",
-        augmentations: dict = None,
+        augmentations: Optional[dict] = None,
     ):
         """Initialize SleapDataset.
 
@@ -137,6 +137,7 @@ class SleapDataset(BaseDataset):
             gt_track_ids, bboxes, crops, poses, shown_poses = [], [], [], [], []
 
             i = int(i)
+            print(i)
 
             lf = video[i]
             img = vid_reader.get_data(i)

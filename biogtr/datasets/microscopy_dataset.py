@@ -4,6 +4,7 @@ from biogtr.datasets import data_utils
 from biogtr.datasets.base_dataset import BaseDataset
 from torch.utils.data import Dataset
 from torchvision.transforms import functional as tvf
+from typing import Optional
 import albumentations as A
 import numpy as np
 import random
@@ -23,7 +24,7 @@ class MicroscopyDataset(BaseDataset):
         chunk: bool = False,
         clip_length: int = 10,
         mode: str = "Train",
-        augmentations: dict = None,
+        augmentations: Optional[dict] = None,
     ):
         """Initialize MicroscopyDataset.
 
