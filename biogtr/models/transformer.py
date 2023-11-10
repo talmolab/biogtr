@@ -171,10 +171,10 @@ class Transformer(torch.nn.Module):
             query_frame: An integer (k) specifying the frame within the window to be queried.
 
         Returns:
-            asso_output: A list of torch.Tensors of shape (L, N_t, N) where:
+            asso_output: A list of torch.Tensors of shape (L, n_query, total_instances) where:
                 L: number of decoder blocks
-                N_t: number of instances in current query/frame
-                N: number of instances in window
+                n_query: number of instances in current query/frame
+                total_instances: number of instances in window
 
         # ------------------------- An example of instances ------------------------ #
         instances = [
@@ -183,7 +183,7 @@ class Transformer(torch.nn.Module):
                 "frame_id": frame index int,
                 "num_detected": N_i, # num of detected instances in i-th frame
                 "bboxes": (N_i, 4),  # in pascal_voc unrounded unnormalized
-                "features": (N_i, D), # D = embedding dimension
+                "features": (N_i, embed_dim), # embed_dim = embedding dimension
                 ...
             },
             ...
@@ -193,21 +193,21 @@ class Transformer(torch.nn.Module):
             [frame["features"] for frame in instances], dim=0
         ).unsqueeze(0)
 
-        T = len(instances)
-        n_t = [frame["num_detected"] for frame in instances]
-        N = sum(n_t)
-        D = reid_features.shape[-1]
+        window_length = len(instances)
+        instances_per_frame = [frame["num_detected"] for frame in instances]
+        total_instances = sum(instances_per_frame)
+        embed_dim = reid_features.shape[-1]
 
         if self.embedding_meta:
             kwargs = self.embedding_meta.get("kwargs", {})
 
-            pred_box, pred_time = get_boxes_times(instances)  # N x 4
+            pred_box, pred_time = get_boxes_times(instances)  # total_instances x 4
 
             embedding_type = self.embedding_meta["embedding_type"]
 
             if "temp" in embedding_type:
                 temp_emb = self.embedding._learned_temp_embedding(
-                    pred_time / T, features=self.d_model, **kwargs
+                    pred_time / window_length, features=self.d_model, **kwargs
                 )
 
                 pos_emb = temp_emb
@@ -226,22 +226,22 @@ class Transformer(torch.nn.Module):
             if "temp" in embedding_type and embedding_type != "learned_temp":
                 pos_emb = (pos_emb + temp_emb) / 2.0
 
-            pos_emb = pos_emb.view(1, N, D)
-            pos_emb = pos_emb.permute(1, 0, 2)  # (N, B, D)
+            pos_emb = pos_emb.view(1, total_instances, embed_dim)
+            pos_emb = pos_emb.permute(1, 0, 2)  # (total_instances, batch_size, embed_dim)
         else:
             pos_emb = None
 
         query_inds = None
-        N_t = N
+        n_query = total_instances
         if query_frame is not None:
-            c = query_frame
-            query_inds = [x for x in range(sum(n_t[:c]), sum(n_t[: c + 1]))]
-            N_t = len(query_inds)
+            
+            query_inds = [x for x in range(sum(instances_per_frame[:query_frame]), sum(instances_per_frame[: query_frame + 1]))]
+            n_query = len(query_inds)
 
-        B, N, D = reid_features.shape
-        reid_features = reid_features.permute(1, 0, 2)  # (N x B x D)
+        batch_size, total_instances, embed_dim = reid_features.shape
+        reid_features = reid_features.permute(1, 0, 2)  # (total_instances x batch_size x embed_dim)
 
-        memory = self.encoder(reid_features, pos_emb=pos_emb)  # (N, B, D)
+        memory = self.encoder(reid_features, pos_emb=pos_emb)  # (total_instances, batch_size, embed_dim)
 
         if query_inds is not None:
             tgt = reid_features[query_inds]
@@ -253,22 +253,22 @@ class Transformer(torch.nn.Module):
             tgt = reid_features
             tgt_pos_emb = pos_emb
 
-        # tgt: (N_t, B, D)
+        # tgt: (n_query, batch_size, embed_dim)
 
         hs = self.decoder(
             tgt, memory, pos_emb=pos_emb, tgt_pos_emb=tgt_pos_emb
-        )  # (L, N_t, B, D)
+        )  # (L, n_query, batch_size, embed_dim)
 
-        feats = hs.transpose(1, 2)  # # (L, B, N_t, D)
-        memory = memory.permute(1, 0, 2).view(B, N, D)  # (B, N, D)
+        feats = hs.transpose(1, 2)  # # (L, batch_size, n_query, embed_dim)
+        memory = memory.permute(1, 0, 2).view(batch_size, total_instances, embed_dim)  # (batch_size, total_instances, embed_dim)
 
         asso_output = []
         for x in feats:
-            # x: (B=1, N_t, D=512)
+            # x: (batch_size=1, n_query, embed_dim=512)
 
-            asso_output.append(self.attn_head(x, memory).view(N_t, N))
+            asso_output.append(self.attn_head(x, memory).view(n_query, total_instances))
 
-        # (L=1, N_t, N)
+        # (L=1, n_query, total_instances)
         return (asso_output, pos_emb) if self.return_embedding else asso_output
 
 
@@ -295,11 +295,11 @@ class TransformerEncoder(nn.Module):
         """Forward pass of encoder layer.
 
         Args:
-            src: The input tensor of shape (N_t, B, D).
-            pos_emb: The positional embedding tensor of shape (N_t, D).
+            src: The input tensor of shape (n_query, batch_size, embed_dim).
+            pos_emb: The positional embedding tensor of shape (n_query, embed_dim).
 
         Returns:
-            The output tensor of shape (N_t, B, D).
+            The output tensor of shape (n_query, batch_size, embed_dim).
         """
         output = src
 
@@ -342,14 +342,14 @@ class TransformerDecoder(nn.Module):
         """Forward pass of the decoder block.
 
         Args:
-            tgt: Target sequence for decoder to generate (N_t, B, D).
+            tgt: Target sequence for decoder to generate (n_query, batch_size, embed_dim).
             memory: Output from encoder, that decoder uses to attend to relevant
-                parts of input sequence (N, B, D)
-            pos_emb: The input positional embedding tensor of shape (N_t, D).
-            tgt_pos_emb: The target positional embedding of shape (N_t, D)
+                parts of input sequence (total_instances, batch_size, embed_dim)
+            pos_emb: The input positional embedding tensor of shape (n_query, embed_dim).
+            tgt_pos_emb: The target positional embedding of shape (n_query, embed_dim)
 
         Returns:
-            The output tensor of shape (L, N_t, B, D).
+            The output tensor of shape (L, n_query, batch_size, embed_dim).
         """
         output = tgt
 
@@ -417,11 +417,11 @@ class TransformerEncoderLayer(nn.Module):
         """Forward pass of the encoder layer.
 
         Args:
-            src: Input sequence for encoder (N_t, B, D).
+            src: Input sequence for encoder (n_query, batch_size, embed_dim).
             pos: Position embedding, if provided is added to src
 
         Returns:
-            The output tensor of shape (N_t, B, D).
+            The output tensor of shape (n_query, batch_size, embed_dim).
         """
         src = src if pos is None else src + pos
         q = k = src
@@ -491,14 +491,14 @@ class TransformerDecoderLayer(nn.Module):
         """Forward pass of decoder layer.
 
         Args:
-            tgt: Target sequence for decoder to generate (N_t, B, D).
+            tgt: Target sequence for decoder to generate (n_query, batch_size, embed_dim).
             memory: Output from encoder, that decoder uses to attend to relevant
-                parts of input sequence (N, B, D)
-            pos_emb: The input positional embedding tensor of shape (N_t, D).
-            tgt_pos_emb: The target positional embedding of shape (N_t, D)
+                parts of input sequence (total_instances, batch_size, embed_dim)
+            pos_emb: The input positional embedding tensor of shape (n_query, embed_dim).
+            tgt_pos_emb: The target positional embedding of shape (n_query, embed_dim)
 
         Returns:
-            The output tensor of shape (N_t, B, D).
+            The output tensor of shape (n_query, batch_size, embed_dim).
         """
         tgt = tgt if tgt_pos is None else tgt + tgt_pos
         memory = memory if pos is None else memory + pos
@@ -511,22 +511,22 @@ class TransformerDecoderLayer(nn.Module):
             tgt = self.norm1(tgt)
 
         tgt2 = self.multihead_attn(
-            query=tgt,  # (N_t, B, D)
-            key=memory,  # (N, B, D)
-            value=memory,  # (N, B, D)
+            query=tgt,  # (n_query, batch_size, embed_dim)
+            key=memory,  # (total_instances, batch_size, embed_dim)
+            value=memory,  # (total_instances, batch_size, embed_dim)
         )[
             0
-        ]  # (N_t, B, D)
+        ]  # (n_query, batch_size, embed_dim)
 
-        tgt = tgt + self.dropout2(tgt2)  # (N_t, B, D)
-        tgt = self.norm2(tgt)  # (N_t, B, D)
+        tgt = tgt + self.dropout2(tgt2)  # (n_query, batch_size, embed_dim)
+        tgt = self.norm2(tgt)  # (n_query, batch_size, embed_dim)
         tgt2 = self.linear2(
             self.dropout(self.activation(self.linear1(tgt)))
-        )  # (N_t, B, D)
-        tgt = tgt + self.dropout3(tgt2)  # (N_t, B, D)
+        )  # (n_query, batch_size, embed_dim)
+        tgt = tgt + self.dropout3(tgt2)  # (n_query, batch_size, embed_dim)
         tgt = self.norm3(tgt)
 
-        return tgt  # (N_t, B, D)
+        return tgt  # (n_query, batch_size, embed_dim)
 
 
 def _get_clones(module: nn.Module, N: int) -> nn.ModuleList:

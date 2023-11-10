@@ -55,9 +55,9 @@ def test_tracker():
         "max_center_dist": None,
     }
 
-    tracker = Tracker(model=tracking_transformer, **tracking_cfg)
+    tracker = Tracker(**tracking_cfg)
 
-    instances_pred = tracker(instances)
+    instances_pred = tracker(tracking_transformer, instances)
 
     asso_equals = (
         instances_pred[test_frame]["decay_time_traj_score"].to_numpy()

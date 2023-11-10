@@ -269,8 +269,8 @@ class Config:
         self,
         callbacks: list[pl.callbacks.Callback],
         logger: pl.loggers.WandbLogger,
-        accelerator: str,
-        devices: int,
+        devices: int = 1,
+        accelerator: str = None
     ) -> pl.Trainer:
         """Getter for the lightning trainer.
 
@@ -278,18 +278,22 @@ class Config:
             callbacks: a list of lightning callbacks preconfigured to be used
                 for training
             logger: the Wandb logger used for logging during training
-            accelerator: either "gpu" or "cpu" specifies which device to use
             devices: The number of gpus to be used. 0 means cpu
+            accelerator: either "gpu" or "cpu" specifies which device to use
 
         Returns:
             A lightning Trainer with specified params
         """
+        if "accelerator" not in self.cfg.trainer:
+            self.set_hparams({'trainer.accelerator': accelerator})
+        if "devices" not in self.cfg.trainer:
+            self.set_hparams({'trainer.devices': devices})
+
         trainer_params = self.cfg.trainer
+        
         return pl.Trainer(
             callbacks=callbacks,
             logger=logger,
-            accelerator=accelerator,
-            devices=devices,
             **trainer_params,
         )
 

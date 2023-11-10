@@ -4,6 +4,7 @@ from copy import deepcopy
 from tqdm import tqdm
 from matplotlib import pyplot as plt
 from omegaconf import DictConfig
+from tqdm import tqdm
 
 import seaborn as sns
 import imageio
@@ -93,7 +94,7 @@ def annotate_video(
     if trails:
         track_trails = {}
 
-    for i in sorted(labels["Frame"]):
+    for i in tqdm(sorted(labels["Frame"]), desc = 'Frame', unit='Frame'):
         frame = video[i]
         if frame.shape[0] == 1 or frame.shape[-1] == 1:
             frame = cv2.cvtColor((frame * 255).astype(np.uint8), cv2.COLOR_GRAY2RGB)

@@ -46,8 +46,8 @@ class GTRRunner(LightningModule):
 
         self.model = GlobalTrackingTransformer(**model_cfg)
         self.loss = AssoLoss(**loss_cfg)
+        self.tracker = Tracker(**tracker_cfg)
 
-        self.tracker_cfg = tracker_cfg
         self.optimizer_cfg = optimizer_cfg
         self.scheduler_cfg = scheduler_cfg
 
@@ -79,7 +79,7 @@ class GTRRunner(LightningModule):
         Returns:
             A dict containing the train loss plus any other metrics specified
         """
-        result = self._shared_eval_step(train_batch[0], self.train_metrics)
+        result = self._shared_eval_step(train_batch[0], persistent_tracking=False, eval_metrics=self.train_metrics)
         for metric, val in result.items():
             self.log(f"train_{metric}", val, batch_size=len(train_batch[0]))
         return result
@@ -97,7 +97,7 @@ class GTRRunner(LightningModule):
         Returns:
             A dict containing the val loss plus any other metrics specified
         """
-        result = self._shared_eval_step(val_batch[0], eval_metrics=self.val_metrics)
+        result = self._shared_eval_step(val_batch[0], persistent_tracking=True, eval_metrics=self.val_metrics)
         for metric, val in result.items():
             self.log(f"val_{metric}", val, batch_size=len(val_batch[0]))
         return result
@@ -113,7 +113,7 @@ class GTRRunner(LightningModule):
         Returns:
             A dict containing the val loss plus any other metrics specified
         """
-        result = self._shared_eval_step(test_batch[0], eval_metrics=self.test_metrics)
+        result = self._shared_eval_step(test_batch[0], persistent_tracking=True, eval_metrics=self.test_metrics)
         for metric, val in result.items():
             self.log(f"val_{metric}", val, batch_size=len(test_batch[0]))
         return result
@@ -131,15 +131,16 @@ class GTRRunner(LightningModule):
         Returns:
             A list of dicts where each dict is a frame containing the predicted track ids
         """
-        tracker = Tracker(self.model, **self.tracker_cfg)
-        instances_pred = tracker(batch[0])
+        self.tracker.persistent_tracking = True
+        instances_pred = self.tracker(self.model, batch[0])
         return instances_pred
 
-    def _shared_eval_step(self, instances, eval_metrics=["sw_cnt"]):
+    def _shared_eval_step(self, instances, persistent_tracking=False, eval_metrics=("sw_cnt",)):
         """Helper function for running evaluation used by train, test, and val steps.
 
         Args:
             instances: A list of dicts where each dict is a frame containing gt data
+            persistent_tracking: Whether or not to track across chunks. During training this should be set to false due to shuffling.
             eval_metrics: A list of metrics calculated and saved
 
         Returns:
@@ -153,8 +154,8 @@ class GTRRunner(LightningModule):
 
         return_metrics = {"loss": loss}
         if "sw_cnt" in eval_metrics:
-            tracker = Tracker(self.model, **self.tracker_cfg)
-            instances_pred = tracker(instances)
+            self.tracker.persistent_tracking = persistent_tracking
+            instances_pred = self.tracker(self.model, instances)
             matches, indices, _ = metrics.get_matches(instances_pred)
             switches = metrics.get_switches(matches, indices)
             sw_cnt = metrics.get_switch_count(switches)

@@ -85,7 +85,7 @@ class Embedding(torch.nn.Module):
         dim_t = self.temperature ** (2 * self._torch_int_div(dim_t, 2) / self.features)
 
         # (b, n_t, 4, D//4)
-        pos_emb = boxes[:, :, :, None] / dim_t
+        pos_emb = boxes[:, :, :, None] / dim_t.to(boxes.device)
 
         pos_emb = torch.stack(
             (pos_emb[:, :, :, 0::2].sin(), pos_emb[:, :, :, 1::2].cos()), dim=4
