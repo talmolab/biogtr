@@ -148,7 +148,7 @@ def filter_max_center_dist(
         # id_inds # Np x M
         valid = norm_dist < max_center_dist  # n_k x Np
         valid_assn = (
-            torch.mm(valid.float(), id_inds).clamp_(max=1.0).long().bool()
+            torch.mm(valid.float(), id_inds.to(valid.device)).clamp_(max=1.0).long().bool()
         )  # n_k x M
         asso_output_filtered = deepcopy(asso_output)
         asso_output_filtered[~valid_assn] = 0  # n_k x M

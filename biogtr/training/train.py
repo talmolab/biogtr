@@ -15,7 +15,7 @@ import pytorch_lightning as pl
 import torch
 import torch.multiprocessing
 
-device = "cuda" if torch.cuda.is_available() else "cpu"
+#device = "cuda" if torch.cuda.is_available() else "cpu"
 
 # useful for longer training runs, but not for single iteration debugging
 # finds optimal hardware algs which has upfront time increase for first
@@ -24,7 +24,7 @@ device = "cuda" if torch.cuda.is_available() else "cpu"
 # torch.backends.cudnn.benchmark = True
 
 # pytorch 2 logic - we set our device once here so we don't have to keep setting
-torch.set_default_device(device)
+#torch.set_default_device(device)
 
 
 @hydra.main(config_path="configs", config_name=None, version_base=None)

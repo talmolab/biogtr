@@ -147,9 +147,9 @@ class Embedding(torch.nn.Module):
             self.learn_pos_emb_num, 4, f
         )  # T x 4 x (D * 4)
 
-        pos_le = pos_emb_table.gather(0, l[:, :, None].expand(N, 4, f))  # N x 4 x d
-        pos_re = pos_emb_table.gather(0, r[:, :, None].expand(N, 4, f))  # N x 4 x d
-        pos_emb = lw[:, :, None] * pos_re + rw[:, :, None] * pos_le
+        pos_le = pos_emb_table.gather(0, l[:, :, None].to(pos_emb_table.device).expand(N, 4, f))  # N x 4 x d
+        pos_re = pos_emb_table.gather(0, r[:, :, None].to(pos_emb_table.device).expand(N, 4, f))  # N x 4 x d
+        pos_emb = lw[:, :, None] * pos_re.to(lw.device) + rw[:, :, None] * pos_le.to(rw.device)
 
         pos_emb = pos_emb.view(N, 4 * f)
 
@@ -187,10 +187,10 @@ class Embedding(torch.nn.Module):
 
         l, r, lw, rw = self._compute_weights(times, self.learn_temp_emb_num)
 
-        le = temp_lookup.weight[l]  # T x D --> N x D
-        re = temp_lookup.weight[r]
+        le = temp_lookup.weight[l.to(temp_lookup.weight.device)]  # T x D --> N x D
+        re = temp_lookup.weight[r.to(temp_lookup.weight.device)]
 
-        temp_emb = lw[:, None] * re + rw[:, None] * le
+        temp_emb = lw[:, None] * re.to(lw.device) + rw[:, None] * le.to(rw.device)
 
         return temp_emb.view(N, self.features)
 

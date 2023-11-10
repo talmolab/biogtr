@@ -68,8 +68,8 @@ def test_tracker():
     assert len(instances_pred[test_frame]["pred_track_ids"] == num_detected)
 
 
-@pytest.mark.parametrize("set_default_device", ["cpu"], indirect=True)
-def test_post_processing(set_default_device):
+#@pytest.mark.parametrize("set_default_device", ["cpu"], indirect=True)
+def test_post_processing(): #set_default_device
     """Test postprocessing methods.
 
     Tests each postprocessing method to ensure that

@@ -174,19 +174,13 @@ class Config:
             torch.multiprocessing.set_sharing_strategy("file_system")
         else:
             pin_memory = False
-        if dataloader_params.shuffle:
-            generator = (
-                torch.Generator(device="cuda") if torch.cuda.is_available() else None
-            )
-        else:
-            generator = None
+        
         return torch.utils.data.DataLoader(
             dataset=dataset,
             batch_size=1,
             pin_memory=pin_memory,
-            generator=generator,
             collate_fn=dataset.no_batching_fn,
-            **dataloader_params,
+            **dataloader_params
         )
 
     def get_optimizer(self, params: Iterable) -> torch.optim.Optimizer:
