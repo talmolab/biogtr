@@ -1,9 +1,11 @@
 """Test inference logic."""
 import torch
 import pytest
+import numpy as np
 from biogtr.models.global_tracking_transformer import GlobalTrackingTransformer
 from biogtr.inference.tracker import Tracker
 from biogtr.inference import post_processing
+from biogtr.inference import metrics
 
 
 def test_tracker():
@@ -144,3 +146,51 @@ def test_post_processing(): #set_default_device
             id_inds=id_inds,
         )
     ).all()
+
+def test_metrics():
+    """Test basic GTR Runner."""
+    num_frames = 3
+    num_detected = 3
+    n_batches = 1
+    instances_pred = []
+    
+    for i in range(n_batches):
+        for j in range(num_frames):
+            bboxes = torch.tensor(np.random.uniform(size=(num_detected, 4)))
+            bboxes[:, -2:] += 1
+            instances_pred.append(
+                
+                {
+                    "video_id": torch.tensor(0),
+                    "frame_id": torch.tensor(j),
+                    "num_detected": torch.tensor([num_detected]),
+                    "bboxes": bboxes,
+                    "gt_track_ids": torch.arange(num_detected),
+                    "pred_track_ids": torch.arange(num_detected),
+                }
+            )
+    instances_mm = metrics.to_track_eval(instances_pred)
+    clear_mot = metrics.get_pymotmetrics(instances_mm)
+
+    matches, indices, _ = metrics.get_matches(instances_pred)
+
+    switches = metrics.get_switches(matches, indices)
+
+    sw_cnt = metrics.get_switch_count(switches)
+
+    assert sw_cnt == clear_mot["num_switches"] == 0, (sw_cnt, clear_mot["num_switches"])
+
+    instances_pred[1]['pred_track_ids'] = torch.tensor([1,2,0])
+    instances_pred[2]['pred_track_ids'] = torch.tensor([2,0,1])
+
+    instances_mm = metrics.to_track_eval(instances_pred)
+    clear_mot = metrics.get_pymotmetrics(instances_mm)
+
+    matches, indices, _ = metrics.get_matches(instances_pred)
+
+    switches = metrics.get_switches(matches, indices)
+
+    sw_cnt = metrics.get_switch_count(switches)
+
+    assert sw_cnt == clear_mot["num_switches"] == 6, (instances_pred[1]['gt_track_ids'],instances_pred[1]['pred_track_ids'], sw_cnt, clear_mot["num_switches"])
+    

@@ -17,6 +17,28 @@ device = "cuda" if torch.cuda.is_available() else "cpu"
 
 torch.set_default_device(device)
 
+def export_trajectories(instances_pred: list[dict], save_path: str = None):
+    save_dict = {}
+    frame_ids = []
+    X, Y = [], []
+    pred_track_ids = []
+    for frame in instances_pred:
+        for i in range(frame["num_detected"]):
+            frame_ids.append(frame["frame_id"].item())
+            bbox = frame["bboxes"][i]
+            y = (bbox[2] + bbox[0]) / 2
+            x = (bbox[3] + bbox[1]) / 2
+            X.append(x.item())
+            Y.append(y.item())
+            pred_track_ids.append(frame["pred_track_ids"][i].item())
+    save_dict["Frame"] = frame_ids
+    save_dict["X"] = X
+    save_dict["Y"] = Y
+    save_dict["Pred_track_id"] = pred_track_ids
+    save_df = pd.DataFrame(save_dict)
+    if save_path:
+        save_df.to_csv(save_path, index=False)
+    return save_df
 
 def inference(
     model: GTRRunner, dataloader: torch.utils.data.DataLoader

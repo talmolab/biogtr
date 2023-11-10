@@ -142,11 +142,14 @@ def filter_max_center_dist(
         ), "Need `k_boxes`, `nonk_boxes`, and `id_ind` to filter by `max_center_dist`"
         k_ct = (k_boxes[:, :2] + k_boxes[:, 2:]) / 2
         k_s = ((k_boxes[:, 2:] - k_boxes[:, :2]) ** 2).sum(dim=1)  # n_k
+        
         nonk_ct = (nonk_boxes[:, :2] + nonk_boxes[:, 2:]) / 2
         dist = ((k_ct[:, None] - nonk_ct[None, :]) ** 2).sum(dim=2)  # n_k x Np
+        
         norm_dist = dist / (k_s[:, None] + 1e-8)  # n_k x Np
         # id_inds # Np x M
         valid = norm_dist < max_center_dist  # n_k x Np
+        
         valid_assn = (
             torch.mm(valid.float(), id_inds.to(valid.device)).clamp_(max=1.0).long().bool()
         )  # n_k x M

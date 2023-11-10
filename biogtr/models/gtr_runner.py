@@ -24,9 +24,9 @@ class GTRRunner(LightningModule):
         loss_cfg: dict = {},
         optimizer_cfg: dict = None,
         scheduler_cfg: dict = None,
-        train_metrics: list[str] = [""],
-        val_metrics: list[str] = ["sw_cnt"],
-        test_metrics: list[str] = ["sw_cnt"],
+        train_metrics: list[str] = (""),
+        val_metrics: list[str] = ("num_switches",),
+        test_metrics: list[str] = ("num_switches",),
     ):
         """Initialize a lightning module for GTR.
 
@@ -135,7 +135,7 @@ class GTRRunner(LightningModule):
         instances_pred = self.tracker(self.model, batch[0])
         return instances_pred
 
-    def _shared_eval_step(self, instances, persistent_tracking=False, eval_metrics=("sw_cnt",)):
+    def _shared_eval_step(self, instances, persistent_tracking=False, eval_metrics=("num_switches",)):
         """Helper function for running evaluation used by train, test, and val steps.
 
         Args:
@@ -153,13 +153,13 @@ class GTRRunner(LightningModule):
         loss = self.loss(logits, instances)
 
         return_metrics = {"loss": loss}
-        if "sw_cnt" in eval_metrics:
+        if eval_metrics is not None and len(eval_metrics) > 0:
             self.tracker.persistent_tracking = persistent_tracking
             instances_pred = self.tracker(self.model, instances)
-            matches, indices, _ = metrics.get_matches(instances_pred)
-            switches = metrics.get_switches(matches, indices)
-            sw_cnt = metrics.get_switch_count(switches)
-            return_metrics["sw_cnt"] = sw_cnt
+            instances_mm = metrics.to_track_eval(instances_pred)
+            clearmot = metrics.get_pymotmetrics(instances_mm, eval_metrics)
+            return_metrics.update(clearmot.to_dict())
+
         return return_metrics
 
     def configure_optimizers(self) -> dict:

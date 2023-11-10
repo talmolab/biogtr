@@ -23,3 +23,6 @@ dependencies:
     - "--editable=.[dev]"
     - imageio[ffmpeg]
     - hydra-core
+    - motmetrics
+    - seaborn
+    - wandb

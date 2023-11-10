@@ -74,6 +74,11 @@ class Tracker:
             instances dict populated with pred track ids and association matrix scores
         """
 # Extract feature representations with pre-trained encoder.
+
+        if not self.persistent_tracking:
+            # print(f'Clearing Queue after tracking')
+            self.track_queue.clear()
+
         for frame in instances:
             if (frame["num_detected"] > 0).item():
                 if not self.use_vis_feats:
@@ -104,10 +109,6 @@ class Tracker:
         instances_pred = self.sliding_inference(
             model, instances, window_size=self.window_size, all_instances=all_instances
         )
-
-        if not self.persistent_tracking:
-            self.track_queue.clear()
-            
         return instances_pred
 
     def sliding_inference(self, model: GlobalTrackingTransformer, instances, window_size, all_instances=None):
@@ -150,10 +151,10 @@ class Tracker:
         id_count = 0
 
         for batch_idx in range(video_len):
-            if instances[batch_idx]['frame_id'] == 0 or (not self.persistent_tracking and batch_idx == 0):
-
+            if (self.persistent_tracking and instances[batch_idx]['frame_id'] == 0):
                 self.track_queue.clear()
-                
+            if len(self.track_queue) == 0:
+                # print(f'Initializing tracks...')
                 instances[batch_idx]["pred_track_ids"] = torch.arange(
                     0, len(instances[0]["bboxes"])
                 )
@@ -164,11 +165,11 @@ class Tracker:
 
             else:
                 instances_to_track = (list(self.track_queue) + [instances[batch_idx]])[-window_size:]
-
-                if not self.persistent_tracking:
-                    query_ind = min(window_size - 1, batch_idx)
-                else:
-                    query_ind = min(window_size - 1, instances[batch_idx]['frame_id'])
+                # if not self.persistent_tracking:
+                #     query_ind = min(window_size - 1, batch_idx)
+                # else:
+                #     query_ind = min(window_size - 1, instances[batch_idx]['frame_id'])
+                query_ind = min(window_size - 1, len(instances_to_track) - 1)
                     
                 instances[batch_idx], id_count = self._run_global_tracker(
                     model,
@@ -264,7 +265,6 @@ class Tracker:
         # Number of instances in each frame of the window.
         # E.g.: instances_per_frame: [4, 5, 6, 7]; window of length 4 with 4 detected instances in the first frame of the window.
         _ = model.eval()
-
         instances_per_frame = [frame["num_detected"] for frame in instances]
 
         total_instances, window_size = sum(instances_per_frame), len(instances_per_frame)  # Number of instances in window; length of window.
@@ -284,9 +284,13 @@ class Tracker:
         asso_output = model_utils.softmax_asso(asso_output)  # (window_size, n_query, N_i)
         asso_output = torch.cat(asso_output, dim=1).cpu()  # (n_query, total_instances)
 
-        n_query = instances[query_frame][
-            "num_detected"
-        ]  # Number of instances in the current/query frame.
+        try:
+            n_query = instances[query_frame][
+                "num_detected"
+            ]  # Number of instances in the current/query frame.
+        except Exception as e:
+            print(len(instances), query_frame, instances[-1])
+            raise(e)
 
         n_nonquery = (
             total_instances - n_query
@@ -337,19 +341,19 @@ class Tracker:
             # last_inds = (id_inds * torch.arange(
             #    n_nonquery, device=id_inds.device)[:, None]).max(dim=0)[1] # n_traj
 
-            nonquery_inds = (
+            last_inds = (
                 id_inds * torch.arange(n_nonquery[0], device=id_inds.device)[:, None]
             ).max(dim=0)[
                 1
             ]  # M
 
-            nonquery_boxes = nonquery_boxes[nonquery_inds]  # n_traj x 4
-            nonquery_ious = post_processing._pairwise_iou(
-                Boxes(query_boxes), Boxes(nonquery_boxes)
+            last_boxes = nonquery_boxes[last_inds]  # n_traj x 4
+            last_ious = post_processing._pairwise_iou(
+                Boxes(query_boxes), Boxes(last_boxes)
             )  # n_k x M
         else:
-            nonquery_ious = traj_score.new_zeros(traj_score.shape)
-        traj_score = post_processing.weight_iou(traj_score, self.iou, nonquery_ious.cpu())
+            last_ious = traj_score.new_zeros(traj_score.shape)
+        traj_score = post_processing.weight_iou(traj_score, self.iou, last_ious.cpu())
         ################################################################################
 
         # threshold for continuing a tracking or starting a new track -> they use 1.0
