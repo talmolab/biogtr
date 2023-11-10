@@ -4,6 +4,7 @@ from biogtr.datasets import data_utils
 from biogtr.datasets.base_dataset import BaseDataset
 from torch.utils.data import Dataset
 from torchvision.transforms import functional as tvf
+from typing import Union
 import albumentations as A
 import numpy as np
 import random
@@ -24,6 +25,8 @@ class MicroscopyDataset(BaseDataset):
         clip_length: int = 10,
         mode: str = "Train",
         augmentations: dict = None,
+        n_chunks: Union[int, float] = 1.0,
+        seed: int = None
     ):
         """Initialize MicroscopyDataset.
 
@@ -44,9 +47,20 @@ class MicroscopyDataset(BaseDataset):
                         'GaussianBlur': {'blur_limit': (3, 7), 'sigma_limit': 0},
                         'RandomContrast': {'limit': 0.2}
                     }
+            n_chunks: Number of chunks to subsample from.
+                Can either a fraction of the dataset (ie (0,1.0]) or number of chunks
+            seed: set a seed for reproducibility
         """
         super().__init__(
-            videos + tracks, padding, crop_size, chunk, clip_length, mode, augmentations
+            videos + tracks,
+            padding,
+            crop_size,
+            chunk,
+            clip_length,
+            mode,
+            augmentations,
+            n_chunks,
+            seed,
         )
 
         self.videos = videos
@@ -56,6 +70,14 @@ class MicroscopyDataset(BaseDataset):
         self.crop_size = crop_size
         self.padding = padding
         self.mode = mode
+        self.n_chunks = n_chunks
+        self.seed = seed
+
+        if self.n_chunks > 1.0:
+            self.n_chunks = int(self.n_chunks)
+
+        # if self.seed is not None:
+        #     np.random.seed(self.seed)
 
         self.augmentations = (
             data_utils.build_augmentations(augmentations) if augmentations else None

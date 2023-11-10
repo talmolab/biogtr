@@ -5,7 +5,7 @@ from biogtr.datasets.base_dataset import BaseDataset
 from scipy.ndimage import measurements
 from torch.utils.data import Dataset
 from torchvision.transforms import functional as tvf
-from typing import List, Optional
+from typing import List, Optional, Union
 import albumentations as A
 import glob
 import numpy as np
@@ -28,7 +28,9 @@ class CellTrackingDataset(BaseDataset):
         clip_length: int = 10,
         mode: str = "train",
         augmentations: Optional[dict] = None,
-        gt_list: str = None,
+        n_chunks: Union[int, float] = 1.0,
+        seed: int = None,
+        gt_list: str = None
     ):
         """Initialize CellTrackingDataset.
 
@@ -48,6 +50,9 @@ class CellTrackingDataset(BaseDataset):
                         'GaussianBlur': {'blur_limit': (3, 7), 'sigma_limit': 0},
                         'RandomContrast': {'limit': 0.2}
                     }
+            n_chunks: Number of chunks to subsample from.
+                Can either a fraction of the dataset (ie (0,1.0]) or number of chunks
+            seed: set a seed for reproducibility
             gt_list: An optional path to .txt file containing gt ids stored in cell
                 tracking challenge format: "track_id", "start_frame",
                 "end_frame", "parent_id"
@@ -60,7 +65,9 @@ class CellTrackingDataset(BaseDataset):
             clip_length,
             mode,
             augmentations,
-            gt_list,
+            n_chunks,
+            seed,
+            gt_list
         )
 
         self.videos = raw_images
@@ -70,6 +77,14 @@ class CellTrackingDataset(BaseDataset):
         self.crop_size = crop_size
         self.padding = padding
         self.mode = mode
+        self.n_chunks = n_chunks
+        self.seed = seed
+
+        if self.n_chunks > 1.0:
+            self.n_chunks = int(self.n_chunks)
+
+        # if self.seed is not None:
+        #     np.random.seed(self.seed)
 
         self.augmentations = (
             data_utils.build_augmentations(augmentations) if augmentations else None

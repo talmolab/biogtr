@@ -67,9 +67,7 @@ class TrackingDataset(LightningDataModule):
         if self.train_dl is None and self.train_ds is None:
             return None
         elif self.train_dl is None:
-            generator = (
-                torch.Generator(device="cuda") if torch.cuda.is_available() else None
-            )
+                
             return DataLoader(
                 self.train_ds,
                 batch_size=1,
@@ -77,7 +75,7 @@ class TrackingDataset(LightningDataModule):
                 pin_memory=False,
                 collate_fn=self.train_ds.no_batching_fn,
                 num_workers=0,
-                generator=generator if torch.cuda.is_available() else None,
+                generator=torch.Generator(device="cuda") if torch.cuda.is_available() else torch.Generator()
             )
         else:
             return self.train_dl

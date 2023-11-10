@@ -49,11 +49,64 @@ def test_sleap_dataset(two_flies):
         clip_length=clip_length,
     )
 
+    ds_length = len(train_ds)
+
     instances = next(iter(train_ds))
 
     assert len(instances) == clip_length
     assert len(instances[0]["gt_track_ids"]) == 2
     assert len(instances[0]["gt_track_ids"]) == instances[0]["num_detected"].item()
+
+    chunk_frac = 0.5
+
+    train_ds = SleapDataset(
+        slp_files=[two_flies[0]],
+        video_files=[two_flies[1]],
+        crop_size=128,
+        chunk=True,
+        clip_length=clip_length,
+        n_chunks = chunk_frac
+    )
+
+    assert len(train_ds) == int(ds_length*chunk_frac)
+
+    n_chunks = 2
+
+    train_ds = SleapDataset(
+        slp_files=[two_flies[0]],
+        video_files=[two_flies[1]],
+        crop_size=128,
+        chunk=True,
+        clip_length=clip_length,
+        n_chunks = n_chunks
+    )
+
+    assert len(train_ds) == n_chunks
+    assert len(train_ds) == len(train_ds.label_idx)
+
+    train_ds = SleapDataset(
+        slp_files=[two_flies[0]],
+        video_files=[two_flies[1]],
+        crop_size=128,
+        chunk=True,
+        clip_length=clip_length,
+        n_chunks = 0
+    )
+
+    assert len(train_ds) == ds_length
+
+    train_ds = SleapDataset(
+        slp_files=[two_flies[0]],
+        video_files=[two_flies[1]],
+        crop_size=128,
+        chunk=True,
+        clip_length=clip_length,
+        n_chunks = ds_length + 10000
+    )
+
+    assert len(train_ds) == ds_length
+
+
 
 
 def test_icy_dataset(ten_icy_particles):
@@ -188,7 +241,6 @@ def test_tracking_dataset(two_flies):
     clip_length = 16
     num_workers = 0
     pin_memory = num_workers > 0
-    generator = torch.Generator(device="cuda") if torch.cuda.is_available() else None
 
     train_sleap_ds = SleapDataset(
         [two_flies[0]],
@@ -205,7 +257,6 @@ def test_tracking_dataset(two_flies):
         num_workers=num_workers,
         collate_fn=train_sleap_ds.no_batching_fn,
         pin_memory=pin_memory,
-        generator=generator,
     )
 
     val_sleap_ds = SleapDataset(
@@ -223,7 +274,6 @@ def test_tracking_dataset(two_flies):
         num_workers=num_workers,
         collate_fn=train_sleap_ds.no_batching_fn,
         pin_memory=pin_memory,
-        generator=generator,
     )
 
     test_sleap_ds = SleapDataset(
@@ -241,7 +291,6 @@ def test_tracking_dataset(two_flies):
         num_workers=num_workers,
         collate_fn=train_sleap_ds.no_batching_fn,
         pin_memory=pin_memory,
-        generator=generator,
     )
 
     # test default if dls are None

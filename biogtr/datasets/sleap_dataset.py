@@ -8,7 +8,7 @@ import random
 from biogtr.datasets import data_utils
 from biogtr.datasets.base_dataset import BaseDataset
 from torchvision.transforms import functional as tvf
-from typing import List
+from typing import List, Union
 
 
 class SleapDataset(BaseDataset):
@@ -24,6 +24,8 @@ class SleapDataset(BaseDataset):
         clip_length: int = 500,
         mode: str = "train",
         augmentations: dict = None,
+        n_chunks: Union[int, float] = 1.0,
+        seed: int = None,
     ):
         """Initialize SleapDataset.
 
@@ -43,6 +45,9 @@ class SleapDataset(BaseDataset):
                         'GaussianBlur': {'blur_limit': (3, 7), 'sigma_limit': 0, 'p': 0.2},
                         'RandomContrast': {'limit': 0.2, 'p': 0.6}
                     }
+            n_chunks: Number of chunks to subsample from.
+                Can either a fraction of the dataset (ie (0,1.0]) or number of chunks
+            seed: set a seed for reproducibility
         """
         super().__init__(
             slp_files + video_files,
@@ -52,6 +57,8 @@ class SleapDataset(BaseDataset):
             clip_length,
             mode,
             augmentations,
+            n_chunks,
+            seed,
         )
 
         self.slp_files = slp_files
@@ -61,6 +68,14 @@ class SleapDataset(BaseDataset):
         self.chunk = chunk
         self.clip_length = clip_length
         self.mode = mode
+        self.n_chunks = n_chunks
+        self.seed = seed
+
+        if self.n_chunks > 1.0:
+            self.n_chunks = int(self.n_chunks)
+
+        # if self.seed is not None:
+        #     np.random.seed(self.seed)
 
         self.augmentations = (
             data_utils.build_augmentations(augmentations) if augmentations else None
