@@ -75,9 +75,7 @@ class Tracker:
         """
 # Extract feature representations with pre-trained encoder.
 
-        if not self.persistent_tracking:
-            # print(f'Clearing Queue after tracking')
-            self.track_queue.clear()
+        _ = model.eval()
 
         for frame in instances:
             if (frame["num_detected"] > 0).item():
@@ -93,7 +91,7 @@ class Tracker:
                 # comment out to turn encoder off
 
                 # Assuming the encoder is already trained or train encoder jointly.
-                elif 'features' not in frame or frame['features'] == None:
+                elif 'features' not in frame or frame['features'] == None or len(frame['features']) == 0:
                     with torch.no_grad():
                         z = model.visual_encoder(frame["crops"])
                         frame["features"] = z
@@ -109,6 +107,11 @@ class Tracker:
         instances_pred = self.sliding_inference(
             model, instances, window_size=self.window_size, all_instances=all_instances
         )
+        
+        if not self.persistent_tracking:
+            # print(f'Clearing Queue after tracking')
+            self.track_queue.clear()
+            
         return instances_pred
 
     def sliding_inference(self, model: GlobalTrackingTransformer, instances, window_size, all_instances=None):
@@ -151,24 +154,33 @@ class Tracker:
         id_count = 0
 
         for batch_idx in range(video_len):
+                
             if (self.persistent_tracking and instances[batch_idx]['frame_id'] == 0):
                 self.track_queue.clear()
-            if len(self.track_queue) == 0:
-                # print(f'Initializing tracks...')
+                
+            if len(self.track_queue) == 0 or sum([len(frame["pred_track_ids"]) for frame in self.track_queue]) == 0:
+                # print(f'Initializing track on batch {batch_idx} frame {instances[batch_idx]["frame_id"]}')
                 instances[batch_idx]["pred_track_ids"] = torch.arange(
-                    0, len(instances[0]["bboxes"])
+                    0, len(instances[batch_idx]["bboxes"])
                 )
 
-                id_count = len(instances[0]["bboxes"])
-
+                id_count = len(instances[batch_idx]["bboxes"])
+                # print(f'Initial tracks are {instances[batch_idx]["pred_track_ids"]}')
                 self.track_queue.append(instances[batch_idx])
 
-            else:
+            else:   
                 instances_to_track = (list(self.track_queue) + [instances[batch_idx]])[-window_size:]
-                # if not self.persistent_tracking:
-                #     query_ind = min(window_size - 1, batch_idx)
-                # else:
-                #     query_ind = min(window_size - 1, instances[batch_idx]['frame_id'])
+                
+                if sum([frame['num_detected'] for frame in instances_to_track]) == 0:
+                    print("No detections to track!")
+                    
+                    instances[batch_idx]["pred_track_ids"] = torch.arange(
+                    0, len(instances[batch_idx]["bboxes"])
+                    )
+                    
+                    self.track_queue.append(instances[batch_idx])
+                    continue
+                
                 query_ind = min(window_size - 1, len(instances_to_track) - 1)
                     
                 instances[batch_idx], id_count = self._run_global_tracker(
@@ -264,6 +276,9 @@ class Tracker:
 
         # Number of instances in each frame of the window.
         # E.g.: instances_per_frame: [4, 5, 6, 7]; window of length 4 with 4 detected instances in the first frame of the window.
+        # print([frame['frame_id'].item() for frame in instances])
+        # print([frame['frame_id'].item() for frame in instances])
+        # print([frame['pred_track_ids'] for frame in instances])
         _ = model.eval()
         instances_per_frame = [frame["num_detected"] for frame in instances]
 
@@ -279,7 +294,8 @@ class Tracker:
                 instances[query_frame]["embeddings"] = embed
             else:
                 asso_output = model(instances, query_frame=query_frame)
-        
+        # if query_frame == 1:
+        #     print(asso_output)
         asso_output = asso_output[-1].split(instances_per_frame, dim=1)  # (window_size, n_query, N_i)
         asso_output = model_utils.softmax_asso(asso_output)  # (window_size, n_query, N_i)
         asso_output = torch.cat(asso_output, dim=1).cpu()  # (n_query, total_instances)
@@ -295,12 +311,16 @@ class Tracker:
         n_nonquery = (
             total_instances - n_query
         )  # Number of instances in the window not including the current/query frame.
-
-        instance_ids = torch.cat(
-            [x["pred_track_ids"] for batch_idx, x in enumerate(instances) if batch_idx != query_frame], dim=0
-        ).view(
-            n_nonquery
-        )  # (n_nonquery,)
+        
+        try:
+            instance_ids = torch.cat(
+                [x["pred_track_ids"] for batch_idx, x in enumerate(instances) if batch_idx != query_frame], dim=0
+            ).view(
+                n_nonquery
+            )  # (n_nonquery,)
+        except Exception as e:
+            print(instances)
+            raise(e)
 
         query_inds = [x for x in range(sum(instances_per_frame[:query_frame]), sum(instances_per_frame[: query_frame + 1]))]
         nonquery_inds = [i for i in range(total_instances) if i not in query_inds]

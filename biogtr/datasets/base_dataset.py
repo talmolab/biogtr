@@ -49,9 +49,6 @@ class BaseDataset(Dataset):
         self.n_chunks = n_chunks
         self.seed = seed
 
-        if self.n_chunks > 1.0:
-            self.n_chunks = int(self.n_chunks)
-
         # if self.seed is not None:
         #     np.random.seed(self.seed)
 
@@ -80,11 +77,13 @@ class BaseDataset(Dataset):
                 frame_idx_split = torch.split(frame_idx, self.clip_length)
                 self.chunked_frame_idx.extend(frame_idx_split)
                 self.label_idx.extend(len(frame_idx_split) * [i])
-            
+                
             if self.n_chunks > 0 and self.n_chunks <= 1.0:
                 n_chunks = int(self.n_chunks * len(self.chunked_frame_idx))
+
             elif self.n_chunks <= len(self.chunked_frame_idx):
-                n_chunks = self.n_chunks
+                n_chunks = int(self.n_chunks)
+                
             else:
                 n_chunks = len(self.chunked_frame_idx)
 

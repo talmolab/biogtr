@@ -73,9 +73,6 @@ class MicroscopyDataset(BaseDataset):
         self.n_chunks = n_chunks
         self.seed = seed
 
-        if self.n_chunks > 1.0:
-            self.n_chunks = int(self.n_chunks)
-
         # if self.seed is not None:
         #     np.random.seed(self.seed)
 

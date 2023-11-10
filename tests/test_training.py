@@ -93,14 +93,14 @@ def test_basic_gtr_runner():
         for i, batch in enumerate(train_ds):
             assert gtr_runner.model.training
             metrics = gtr_runner.training_step(batch, i)
-            assert "loss" in metrics and "sw_cnt" not in metrics
+            assert "loss" in metrics and "num_switches" not in metrics
             assert metrics["loss"].requires_grad
 
         for j, batch in enumerate(train_ds):
             gtr_runner.eval()
             with torch.no_grad():
                 metrics = gtr_runner.validation_step(batch, j)
-            assert "loss" in metrics and "sw_cnt" in metrics
+            assert "loss" in metrics and "num_switches" in metrics
             assert not metrics["loss"].requires_grad
 
         gtr_runner.train()
@@ -109,7 +109,7 @@ def test_basic_gtr_runner():
         gtr_runner.eval()
         with torch.no_grad():
             metrics = gtr_runner.test_step(batch, k)
-        assert "loss" in metrics and "sw_cnt" in metrics
+        assert "loss" in metrics and "num_switches" in metrics
         assert not metrics["loss"].requires_grad
 
 

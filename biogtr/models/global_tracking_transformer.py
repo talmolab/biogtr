@@ -116,7 +116,7 @@ class GlobalTrackingTransformer(nn.Module):
         # Extract feature representations with pre-trained encoder.
         for frame in instances:
             if (frame["num_detected"] > 0).item(): 
-                if "features" in frame.keys() and len(frame["features"]) == 0:
+                if "features" not in frame.keys() or frame['features'] == None or len(frame["features"]) == 0:
                     z = self.visual_encoder(frame["crops"])
                     frame["features"] = z
 

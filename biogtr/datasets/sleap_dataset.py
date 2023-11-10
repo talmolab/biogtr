@@ -20,6 +20,7 @@ class SleapDataset(BaseDataset):
         video_files: list[str],
         padding: int = 5,
         crop_size: int = 128,
+        anchor: str = "",
         chunk: bool = True,
         clip_length: int = 500,
         mode: str = "train",
@@ -34,6 +35,8 @@ class SleapDataset(BaseDataset):
             video_files: a list of paths to video files
             padding: amount of padding around object crops
             crop_size: the size of the object crops
+            anchor: the name of the anchor keypoint to be used as centroid for cropping. 
+            If unavailable then crop around the midpoint between all visible anchors.
             chunk: whether or not to chunk the dataset into batches
             clip_length: the number of frames in each chunk
             mode: `train` or `val`. Determines whether this dataset is used for
@@ -70,9 +73,7 @@ class SleapDataset(BaseDataset):
         self.mode = mode
         self.n_chunks = n_chunks
         self.seed = seed
-
-        if self.n_chunks > 1.0:
-            self.n_chunks = int(self.n_chunks)
+        self.anchor = anchor
 
         # if self.seed is not None:
         #     np.random.seed(self.seed)
@@ -88,12 +89,7 @@ class SleapDataset(BaseDataset):
         # for label in self.labels:
         # label.remove_empty_instances(keep_empty_frames=False)
 
-        self.anchor_names = [
-            data_utils.sorted_anchors(labels) for labels in self.labels
-        ]
-
-        self.frame_idx = [torch.arange(len(label)) for label in self.labels]
-
+        self.frame_idx = [torch.arange(len(labels)) for labels in self.labels]
         # Method in BaseDataset. Creates label_idx and chunked_frame_idx to be
         # used in call to get_instances()
         self.create_chunks()
@@ -134,11 +130,6 @@ class SleapDataset(BaseDataset):
         """
         video = self.labels[label_idx]
 
-        anchors = [
-            video.skeletons[0].node_names.index(anchor_name)
-            for anchor_name in self.anchor_names[label_idx]
-        ]
-
         video_name = self.video_files[label_idx]
 
         vid_reader = imageio.get_reader(video_name, "ffmpeg")
@@ -147,15 +138,19 @@ class SleapDataset(BaseDataset):
         crop_shape = (img.shape[-1], *(self.crop_size + 2 * self.padding,) * 2)
 
         instances = []
-
-        for i in frame_idx:
+        for i, frame in enumerate(frame_idx):
             gt_track_ids, bboxes, crops, poses, shown_poses = [], [], [], [], []
 
-            i = int(i)
-
-            lf = video[i]
-            img = vid_reader.get_data(i)
-
+            frame = int(frame)
+            
+            lf = video[frame]
+            
+            try:
+                img = vid_reader.get_data(frame)
+            except IndexError as e:
+                print(f"Could not read frame {frame} from {video_name}")
+                continue
+                
             for instance in lf:
                 gt_track_ids.append(video.tracks.index(instance.track))
 
@@ -177,6 +172,9 @@ class SleapDataset(BaseDataset):
                     )
                 )
 
+                shown_poses = [{key: val for key, val in instance.items()
+                                if not np.isnan(val).any()
+                                } for instance in shown_poses]
             # augmentations
             if self.augmentations is not None:
                 for transform in self.augmentations:
@@ -207,18 +205,50 @@ class SleapDataset(BaseDataset):
                     for aug_pose_arr, pose_dict in zip(aug_poses, shown_poses)
                 ]
 
-                _ = [pose.update(aug_pose) for pose, aug_pose in zip(poses, aug_poses)]
+                _ = [pose.update(aug_pose) for pose, aug_pose in zip(shown_poses, aug_poses)]
 
             img = tvf.to_tensor(img)
 
-            for pose in poses:
-                bbox = data_utils.pad_bbox(
-                    data_utils.centroid_bbox(
-                        np.array(list(pose.values())), anchors, self.crop_size
-                    ),
-                    padding=self.padding,
-                )
+            for pose in shown_poses:
 
+                if self.anchor in pose:
+                    anchor = self.anchor
+                elif self.anchor.lower() in pose:
+                    anchor = self.anchor.lower()
+                elif self.anchor.upper() in pose:
+                    anchor = self.anchor.upper()
+                else:
+                    anchor = "midpoint"
+                    
+                if anchor != "midpoint":
+                    centroid = pose[anchor]
+
+                    if not np.isnan(centroid).any():
+                        bbox = data_utils.pad_bbox(
+                                data_utils.get_bbox(
+                                    centroid, self.crop_size
+                                ),
+                                padding=self.padding,
+                            )
+                        
+                    else:
+                        #print(f'{self.anchor} contains NaN: {centroid}. Using midpoint')
+                        bbox = data_utils.pad_bbox(
+                            data_utils.pose_bbox(
+                                np.array(list(pose.values())), self.crop_size
+                            ),
+                            padding=self.padding,
+                        )
+                else:
+                    #print(f'{self.anchor} not an available option amongst {pose.keys()}. Using midpoint')
+                    bbox = data_utils.pad_bbox(
+                        data_utils.pose_bbox(
+                            np.array(list(pose.values())), self.crop_size
+                        ),
+                        padding=self.padding,
+                    )
+
+                
                 crop = data_utils.crop_bbox(img, bbox)
 
                 bboxes.append(bbox)
@@ -232,7 +262,7 @@ class SleapDataset(BaseDataset):
                 {
                     "video_id": torch.tensor([label_idx]),
                     "img_shape": torch.tensor([img.shape]),
-                    "frame_id": torch.tensor([i]),
+                    "frame_id": torch.tensor([frame]),
                     "num_detected": torch.tensor([len(bboxes)]),
                     "gt_track_ids": torch.tensor(gt_track_ids),
                     "bboxes": torch.stack(bboxes) if bboxes else torch.empty((0, 4)),

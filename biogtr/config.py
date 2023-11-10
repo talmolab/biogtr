@@ -92,20 +92,32 @@ class Config:
 
     def get_gtr_runner(self):
         """Get lightning module for training, validation, and inference."""
-        model_params = self.cfg.model
+        
         tracker_params = self.cfg.tracker
         optimizer_params = self.cfg.optimizer
         scheduler_params = self.cfg.scheduler
         loss_params = self.cfg.loss
         gtr_runner_params = self.cfg.runner
-        return GTRRunner(
-            model_params,
-            tracker_params,
-            loss_params,
-            optimizer_params,
-            scheduler_params,
-            **gtr_runner_params,
-        )
+        
+        if self.cfg.model.ckpt_path is not None and self.cfg.model.ckpt_path != "":
+            model = GTRRunner.load_from_checkpoint(self.cfg.model.ckpt_path,
+                                                   tracker_cfg = tracker_params,
+                                                   train_metrics=self.cfg.runner.train_metrics,
+                                                  val_metrics=self.cfg.runner.val_metrics,
+                                                  test_metrics=self.cfg.runner.test_metrics)
+            
+        else:
+            model_params = self.cfg.model
+            model = GTRRunner(
+                model_params,
+                tracker_params,
+                loss_params,
+                optimizer_params,
+                scheduler_params,
+                **gtr_runner_params,
+            )
+
+        return model
 
     def get_dataset(
         self, mode: str
@@ -225,7 +237,7 @@ class Config:
         Returns:
             A Logger with specified params
         """
-        logger_params = self.cfg.logging
+        logger_params = OmegaConf.to_container(self.cfg.logging, resolve=True)
         return init_logger(logger_params)
 
     def get_early_stopping(self) -> pl.callbacks.EarlyStopping:
@@ -296,7 +308,3 @@ class Config:
             logger=logger,
             **trainer_params,
         )
-
-    def get_ckpt_path(self):
-        """Get model ckpt path for loading."""
-        return self.cfg.model.ckpt_path

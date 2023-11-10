@@ -250,7 +250,8 @@ def get_pymotmetrics(data: dict, metrics: Union[str, tuple] = "all", key: str = 
         "num_timsteps": L,
     }
     """
-
+    if not isinstance(metrics, str):
+        metrics = ["num_switches" if metric.lower() == "sw_cnt" else metric for metric in metrics] #backward compatibility
     acc = mm.MOTAccumulator(auto_id=True)
 
     for i in range(len(data["gt_ids"])):

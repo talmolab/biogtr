@@ -41,13 +41,11 @@ def main(cfg: DictConfig):
 
     # update with parameters for batch train job
     if "batch_config" in cfg.keys():
+        
         try:
             index = int(os.environ["POD_INDEX"])
-        # For testing without deploying a job on runai
-        except KeyError:
-            print("Pod Index Not found! Setting index to 0")
-            index = 0
-        print(f"Pod Index: {index}")
+        except KeyError as e:
+            index = int(input("No pod index found, assuming single run!\nPlease input task index to run:"))
 
         hparams_df = pd.read_csv(cfg.batch_config)
         hparams = hparams_df.iloc[index].to_dict()
@@ -99,8 +97,7 @@ def main(cfg: DictConfig):
         devices=devices,
     )
 
-    ckpt_path = train_cfg.get_ckpt_path()
-    trainer.fit(model, dataset, ckpt_path=ckpt_path)
+    trainer.fit(model, dataset)
 
 
 if __name__ == "__main__":

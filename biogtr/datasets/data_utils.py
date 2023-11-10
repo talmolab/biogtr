@@ -2,7 +2,7 @@
 from PIL import Image
 from numpy.typing import ArrayLike
 from torchvision.transforms import functional as tvf
-from typing import List, Dict
+from typing import List, Dict, Union
 from xml.etree import cElementTree as et
 import albumentations as A
 import math
@@ -34,7 +34,7 @@ def crop_bbox(img: torch.Tensor, bbox: ArrayLike) -> torch.Tensor:
 
     Args:
         img: Image as a tensor of shape (channels, height, width).
-        bbox: Bounding box in [x1, y1, x2, y2] format.
+        bbox: Bounding box in [y1, x1, y2, x2] format.
 
     Returns:
         Cropped pixels as tensor of shape (channels, height, width).
@@ -52,7 +52,7 @@ def crop_bbox(img: torch.Tensor, bbox: ArrayLike) -> torch.Tensor:
     return crop
 
 
-def get_bbox(center: ArrayLike, size: int) -> torch.Tensor:
+def get_bbox(center: ArrayLike, size: Union[int, tuple[int]]) -> torch.Tensor:
     """Get a square bbox around a centroid coordinates.
 
     Args:
@@ -62,10 +62,13 @@ def get_bbox(center: ArrayLike, size: int) -> torch.Tensor:
     Returns:
         A torch tensor in form y1, x1, y2, x2
     """
+    if type(size) == int:
+        size = (size, size)
     cx, cy = center[0], center[1]
 
     bbox = torch.Tensor(
-        [-size // 2 + cy, -size // 2 + cx, size // 2 + cy, size // 2 + cx]
+        [-size[-1] // 2 + cy, -size[0] // 2 + cx,
+         size[-1] // 2 + cy, size[0] // 2 + cx]
     )
 
     return bbox
@@ -86,6 +89,7 @@ def centroid_bbox(points: ArrayLike, anchors: list, crop_size: int) -> torch.Ten
     Returns:
         Bounding box in [y1, x1, y2, x2] format.
     """
+    print(anchors)
     for anchor in anchors:
         cx, cy = points[anchor][0], points[anchor][1]
         if not np.isnan(cx):
@@ -104,28 +108,32 @@ def centroid_bbox(points: ArrayLike, anchors: list, crop_size: int) -> torch.Ten
 
 
 def pose_bbox(
-    instance: sio.Instance, padding: int, im_shape: ArrayLike
+    points: np.ndarray, bbox_size: Union[tuple[int], int]
 ) -> torch.Tensor:
     """Calculate bbox around instance pose.
 
     Args:
         instance: a labeled instance in a frame,
-        padding: the amount to pad around the pose crop
-        im_shape: the size of the original image in (w,h)
+        bbox_size: size of bbox either an int indicating square bbox or in (x,y)
 
     Returns:
         Bounding box in [y1, x1, y2, x2] format.
     """
-    w, h = im_shape
-
-    points = torch.Tensor([[p.x, p.y] for p in instance.points])
-
-    min_x = max(torch.nanmin(points[:, 0]) - padding, 0)
-    min_y = max(torch.nanmin(points[:, 1]) - padding, 0)
-    max_x = min(torch.nanmax(points[:, 0]) + padding, w)
-    max_y = min(torch.nanmax(points[:, 1]) + padding, h)
-
-    bbox = torch.Tensor([min_y, min_x, max_y, max_x])
+    if type(bbox_size) == int:
+        bbox_size = (bbox_size, bbox_size)
+    # print(points)
+    minx = np.nanmin(points[:,0], axis=-1)
+    miny = np.nanmin(points[:,-1], axis=-1)
+    minpoints = np.array([minx, miny]).T
+    
+    maxx = np.nanmax(points[:,0], axis=-1)
+    maxy = np.nanmax(points[:,-1], axis=-1)
+    maxpoints = np.array([maxx, maxy]).T
+    
+    c = ((minpoints + maxpoints)/2)
+    
+    bbox = torch.Tensor([c[-1]-bbox_size[-1]/2, c[0] - bbox_size[0]/2,
+                         c[-1] + bbox_size[-1]/2, c[0] + bbox_size[0]/2])
     return bbox
 
 

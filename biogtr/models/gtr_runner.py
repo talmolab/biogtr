@@ -24,9 +24,8 @@ class GTRRunner(LightningModule):
         loss_cfg: dict = {},
         optimizer_cfg: dict = None,
         scheduler_cfg: dict = None,
-        train_metrics: list[str] = (""),
-        val_metrics: list[str] = ("num_switches",),
-        test_metrics: list[str] = ("num_switches",),
+        metrics: dict[str,list[str]] = {"train": ["num_switches"], "val": ["num_switches"], "test": ["num_switches"]},
+        persistent_tracking: dict[str, bool] = {"train": False, "val": True, "test": True}
     ):
         """Initialize a lightning module for GTR.
 
@@ -51,10 +50,8 @@ class GTRRunner(LightningModule):
         self.optimizer_cfg = optimizer_cfg
         self.scheduler_cfg = scheduler_cfg
 
-        self.train_metrics = train_metrics
-        self.val_metrics = val_metrics
-        self.test_metrics = test_metrics
-
+        self.metrics = metrics
+        self.persistent_tracking = persistent_tracking
     def forward(self, instances) -> torch.Tensor:
         """The forward pass of the lightning module.
 
@@ -64,7 +61,9 @@ class GTRRunner(LightningModule):
         Returns:
             An association matrix between objects
         """
-        return self.model(instances)
+        if sum([frame['num_detected'] for frame in instances]) > 0:
+            return self.model(instances)
+        return None
 
     def training_step(
         self, train_batch: list[dict], batch_idx: int
@@ -79,9 +78,9 @@ class GTRRunner(LightningModule):
         Returns:
             A dict containing the train loss plus any other metrics specified
         """
-        result = self._shared_eval_step(train_batch[0], persistent_tracking=False, eval_metrics=self.train_metrics)
-        for metric, val in result.items():
-            self.log(f"train_{metric}", val, batch_size=len(train_batch[0]))
+        result = self._shared_eval_step(train_batch[0], mode="train")
+        self.log_metrics(result, "train")
+                         
         return result
 
     def validation_step(
@@ -97,9 +96,9 @@ class GTRRunner(LightningModule):
         Returns:
             A dict containing the val loss plus any other metrics specified
         """
-        result = self._shared_eval_step(val_batch[0], persistent_tracking=True, eval_metrics=self.val_metrics)
-        for metric, val in result.items():
-            self.log(f"val_{metric}", val, batch_size=len(val_batch[0]))
+        result = self._shared_eval_step(val_batch[0], mode = "val")
+        self.log_metrics(result, "val")
+        
         return result
 
     def test_step(self, test_batch: list[dict], batch_idx: int) -> dict[str, float]:
@@ -113,9 +112,9 @@ class GTRRunner(LightningModule):
         Returns:
             A dict containing the val loss plus any other metrics specified
         """
-        result = self._shared_eval_step(test_batch[0], persistent_tracking=True, eval_metrics=self.test_metrics)
-        for metric, val in result.items():
-            self.log(f"val_{metric}", val, batch_size=len(test_batch[0]))
+        result = self._shared_eval_step(test_batch[0], mode="test")
+        self.log_metrics(result, "test")
+        
         return result
 
     def predict_step(self, batch: list[dict], batch_idx: int) -> dict:
@@ -135,31 +134,39 @@ class GTRRunner(LightningModule):
         instances_pred = self.tracker(self.model, batch[0])
         return instances_pred
 
-    def _shared_eval_step(self, instances, persistent_tracking=False, eval_metrics=("num_switches",)):
+    def _shared_eval_step(self, instances, mode):
         """Helper function for running evaluation used by train, test, and val steps.
 
         Args:
             instances: A list of dicts where each dict is a frame containing gt data
-            persistent_tracking: Whether or not to track across chunks. During training this should be set to false due to shuffling.
-            eval_metrics: A list of metrics calculated and saved
+            mode: which metrics to compute and whether to use persistent tracking or not
 
         Returns:
             a dict containing the loss and any other metrics specified by `eval_metrics`
         """
-        if self.model.transformer.return_embedding:
-            logits, _ = self(instances)
-        else:
-            logits = self(instances)
-        loss = self.loss(logits, instances)
+        try:
+            eval_metrics = self.metrics[mode]
+            persistent_tracking = self.persistent_tracking[mode]
+            if self.model.transformer.return_embedding:
+                logits, _ = self(instances)
+            else:
+                logits = self(instances)
 
-        return_metrics = {"loss": loss}
-        if eval_metrics is not None and len(eval_metrics) > 0:
-            self.tracker.persistent_tracking = persistent_tracking
-            instances_pred = self.tracker(self.model, instances)
-            instances_mm = metrics.to_track_eval(instances_pred)
-            clearmot = metrics.get_pymotmetrics(instances_mm, eval_metrics)
-            return_metrics.update(clearmot.to_dict())
+            if not logits:
+                return None
 
+            loss = self.loss(logits, instances)
+
+            return_metrics = {"loss": loss}
+            if eval_metrics is not None and len(eval_metrics) > 0:
+                self.tracker.persistent_tracking = persistent_tracking
+                instances_pred = self.tracker(self.model, instances)
+                instances_mm = metrics.to_track_eval(instances_pred)
+                clearmot = metrics.get_pymotmetrics(instances_mm, eval_metrics)
+                return_metrics.update(clearmot.to_dict())
+        except Exception as e:
+            print(f'Failed on frame {instances[0]["frame_id"]} of video {instances[0]["video_id"]}')
+            raise(e)
         return return_metrics
 
     def configure_optimizers(self) -> dict:
@@ -187,8 +194,13 @@ class GTRRunner(LightningModule):
             "optimizer": optimizer,
             "lr_scheduler": {
                 "scheduler": scheduler,
-                "monitor": "train_loss",
+                "monitor": "val_loss",
                 "interval": "epoch",
                 "frequency": 10,
             },
         }
+    
+    def log_metrics(self, result, mode):
+        if result:
+            for metric, val in result.items():
+                self.log(f"{mode}_{metric}", val, on_step = True, on_epoch=True)
