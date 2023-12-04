@@ -15,7 +15,7 @@ import pytorch_lightning as pl
 import torch
 import torch.multiprocessing
 
-#device = "cuda" if torch.cuda.is_available() else "cpu"
+# device = "cuda" if torch.cuda.is_available() else "cpu"
 
 # useful for longer training runs, but not for single iteration debugging
 # finds optimal hardware algs which has upfront time increase for first
@@ -24,12 +24,12 @@ import torch.multiprocessing
 # torch.backends.cudnn.benchmark = True
 
 # pytorch 2 logic - we set our device once here so we don't have to keep setting
-#torch.set_default_device(device)
+# torch.set_default_device(device)
 
 
 @hydra.main(config_path="configs", config_name=None, version_base=None)
 def main(cfg: DictConfig):
-    """Main function for training.
+    """Train model based on config.
 
     Handles all config parsing and initialization then calls `trainer.train()`.
     If `batch_config` is included then run will be assumed to be a batch job.
@@ -41,11 +41,12 @@ def main(cfg: DictConfig):
 
     # update with parameters for batch train job
     if "batch_config" in cfg.keys():
-        
         try:
             index = int(os.environ["POD_INDEX"])
         except KeyError as e:
-            index = int(input("No pod index found, assuming single run!\nPlease input task index to run:"))
+            index = int(
+                input(f"{e}. Assuming single run!\nPlease input task index to run:")
+            )
 
         hparams_df = pd.read_csv(cfg.batch_config)
         hparams = hparams_df.iloc[index].to_dict()

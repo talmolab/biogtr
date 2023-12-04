@@ -5,6 +5,8 @@ import imageio
 import numpy as np
 import sleap_io as sio
 import random
+import warnings
+from biogtr.data_structures import Frame, Instance
 from biogtr.datasets import data_utils
 from biogtr.datasets.base_dataset import BaseDataset
 from torchvision.transforms import functional as tvf
@@ -27,6 +29,7 @@ class SleapDataset(BaseDataset):
         augmentations: dict = None,
         n_chunks: Union[int, float] = 1.0,
         seed: int = None,
+        verbose: bool = False,
     ):
         """Initialize SleapDataset.
 
@@ -35,7 +38,7 @@ class SleapDataset(BaseDataset):
             video_files: a list of paths to video files
             padding: amount of padding around object crops
             crop_size: the size of the object crops
-            anchor: the name of the anchor keypoint to be used as centroid for cropping. 
+            anchor: the name of the anchor keypoint to be used as centroid for cropping.
             If unavailable then crop around the midpoint between all visible anchors.
             chunk: whether or not to chunk the dataset into batches
             clip_length: the number of frames in each chunk
@@ -51,6 +54,7 @@ class SleapDataset(BaseDataset):
             n_chunks: Number of chunks to subsample from.
                 Can either a fraction of the dataset (ie (0,1.0]) or number of chunks
             seed: set a seed for reproducibility
+            verbose: boolean representing whether to print
         """
         super().__init__(
             slp_files + video_files,
@@ -73,7 +77,8 @@ class SleapDataset(BaseDataset):
         self.mode = mode
         self.n_chunks = n_chunks
         self.seed = seed
-        self.anchor = anchor
+        self.anchor = anchor.lower()
+        self.verbose = verbose
 
         # if self.seed is not None:
         #     np.random.seed(self.seed)
@@ -95,7 +100,7 @@ class SleapDataset(BaseDataset):
         self.create_chunks()
 
     def get_indices(self, idx):
-        """Retrieves label and frame indices given batch index.
+        """Retrieve label and frame indices given batch index.
 
         Args:
             idx: the index of the batch.
@@ -135,33 +140,23 @@ class SleapDataset(BaseDataset):
         vid_reader = imageio.get_reader(video_name, "ffmpeg")
 
         img = vid_reader.get_data(0)
-        crop_shape = (img.shape[-1], *(self.crop_size + 2 * self.padding,) * 2)
 
-        instances = []
-        for i, frame in enumerate(frame_idx):
-            gt_track_ids, bboxes, crops, poses, shown_poses = [], [], [], [], []
+        frames = []
+        for i, frame_ind in enumerate(frame_idx):
+            instances, gt_track_ids, shown_poses = [], [], []
 
-            frame = int(frame)
-            
-            lf = video[frame]
-            
+            frame_ind = int(frame_ind)
+
+            lf = video[frame_ind]
+
             try:
-                img = vid_reader.get_data(frame)
+                img = vid_reader.get_data(frame_ind)
             except IndexError as e:
-                print(f"Could not read frame {frame} from {video_name}")
+                print(f"Could not read frame {frame_ind} from {video_name} due to {e}")
                 continue
-                
+
             for instance in lf:
                 gt_track_ids.append(video.tracks.index(instance.track))
-
-                poses.append(
-                    dict(
-                        zip(
-                            [n.name for n in instance.skeleton.nodes],
-                            np.array(instance.numpy()).tolist(),
-                        )
-                    )
-                )
 
                 shown_poses.append(
                     dict(
@@ -172,9 +167,14 @@ class SleapDataset(BaseDataset):
                     )
                 )
 
-                shown_poses = [{key: val for key, val in instance.items()
-                                if not np.isnan(val).any()
-                                } for instance in shown_poses]
+                shown_poses = [
+                    {
+                        key.lower(): val
+                        for key, val in instance.items()
+                        if not np.isnan(val).any()
+                    }
+                    for instance in shown_poses
+                ]
             # augmentations
             if self.augmentations is not None:
                 for transform in self.augmentations:
@@ -205,34 +205,37 @@ class SleapDataset(BaseDataset):
                     for aug_pose_arr, pose_dict in zip(aug_poses, shown_poses)
                 ]
 
-                _ = [pose.update(aug_pose) for pose, aug_pose in zip(shown_poses, aug_poses)]
+                _ = [
+                    pose.update(aug_pose)
+                    for pose, aug_pose in zip(shown_poses, aug_poses)
+                ]
 
             img = tvf.to_tensor(img)
 
-            for pose in shown_poses:
+            for i in range(len(gt_track_ids)):
+                pose = shown_poses[i]
 
+                """Check for anchor"""
                 if self.anchor in pose:
                     anchor = self.anchor
-                elif self.anchor.lower() in pose:
-                    anchor = self.anchor.lower()
-                elif self.anchor.upper() in pose:
-                    anchor = self.anchor.upper()
                 else:
+                    if self.verbose:
+                        warnings.warn(
+                            f"{self.anchor} not in {[key for key in pose.keys()]}! Defaulting to midpoint"
+                        )
                     anchor = "midpoint"
-                    
+
                 if anchor != "midpoint":
                     centroid = pose[anchor]
 
                     if not np.isnan(centroid).any():
                         bbox = data_utils.pad_bbox(
-                                data_utils.get_bbox(
-                                    centroid, self.crop_size
-                                ),
-                                padding=self.padding,
-                            )
-                        
+                            data_utils.get_bbox(centroid, self.crop_size),
+                            padding=self.padding,
+                        )
+
                     else:
-                        #print(f'{self.anchor} contains NaN: {centroid}. Using midpoint')
+                        # print(f'{self.anchor} contains NaN: {centroid}. Using midpoint')
                         bbox = data_utils.pad_bbox(
                             data_utils.pose_bbox(
                                 np.array(list(pose.values())), self.crop_size
@@ -240,7 +243,7 @@ class SleapDataset(BaseDataset):
                             padding=self.padding,
                         )
                 else:
-                    #print(f'{self.anchor} not an available option amongst {pose.keys()}. Using midpoint')
+                    # print(f'{self.anchor} not an available option amongst {pose.keys()}. Using midpoint')
                     bbox = data_utils.pad_bbox(
                         data_utils.pose_bbox(
                             np.array(list(pose.values())), self.crop_size
@@ -248,31 +251,20 @@ class SleapDataset(BaseDataset):
                         padding=self.padding,
                     )
 
-                
                 crop = data_utils.crop_bbox(img, bbox)
 
-                bboxes.append(bbox)
-                crops.append(crop)
+                instance = Instance(
+                    gt_track_id=gt_track_ids[i], pred_track_id=-1, crop=crop, bbox=bbox
+                )
 
-            stacked_crops = (
-                torch.stack(crops) if crops else torch.empty((0, *crop_shape))
+                instances.append(instance)
+
+            frame = Frame(
+                video_id=label_idx,
+                frame_id=frame_ind,
+                img_shape=img.shape,
+                instances=instances,
             )
+            frames.append(frame)
 
-            instances.append(
-                {
-                    "video_id": torch.tensor([label_idx]),
-                    "img_shape": torch.tensor([img.shape]),
-                    "frame_id": torch.tensor([frame]),
-                    "num_detected": torch.tensor([len(bboxes)]),
-                    "gt_track_ids": torch.tensor(gt_track_ids),
-                    "bboxes": torch.stack(bboxes) if bboxes else torch.empty((0, 4)),
-                    "crops": stacked_crops,
-                    "features": torch.tensor([]),
-                    "pred_track_ids": torch.tensor([-1 for _ in range(len(bboxes))]),
-                    "asso_output": torch.tensor([]),
-                    "matches": torch.tensor([]),
-                    "traj_score": torch.tensor([]),
-                }
-            )
-
-        return instances
+        return frames

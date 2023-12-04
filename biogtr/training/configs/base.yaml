@@ -55,30 +55,35 @@ tracker:
   max_center_dist: null
 
 runner:
-  train_metrics: [""]
-  val_metrics: ["sw_cnt"]
-  test_metrics: ["sw_cnt"]
-
+  metrics:
+      train: ['num_switches']
+      val: ['num_switches']
+      test: ['num_switches']
+  persistent_tracking:
+      train: false
+      val: true
+      test: true
+      
 dataset:
   train_dataset:
-    slp_files: ['190612_110405_wt_18159111_rig2.2@11730.slp']
-    video_files: ['190612_110405_wt_18159111_rig2.2@11730.mp4']
+    slp_files: ["../../tests/data/sleap/two_flies.slp"]
+    video_files: ["../../tests/data/sleap/two_flies.mp4"]
     padding: 5
     crop_size: 128
     chunk: true
     clip_length: 32
 
   val_dataset:
-    slp_files: ['190612_110405_wt_18159111_rig2.2@11730.slp']
-    video_files: ['190612_110405_wt_18159111_rig2.2@11730.mp4']
+    slp_files: ["../../tests/data/sleap/two_flies.slp"]
+    video_files: ["../../tests/data/sleap/two_flies.mp4"]
     padding: 5
     crop_size: 128 
     chunk: True
     clip_length: 32
 
   test_dataset:
-    slp_files: ['190612_110405_wt_18159111_rig2.2@11730.slp']
-    video_files: ['190612_110405_wt_18159111_rig2.2@11730.mp4']
+    slp_files: ["../../tests/data/sleap/two_flies.slp"]
+    video_files: ["../../tests/data/sleap/two_flies.mp4"]
     padding: 5
     crop_size: 128 
     chunk: True
@@ -96,6 +101,7 @@ dataloader:
     num_workers: 0
 
 logging:
+  logger_type: null
   name: "example_train"
   entity: null
   job_type: "train"
@@ -116,7 +122,7 @@ early_stopping:
   divergence_threshold: 30
 
 checkpointing:
-  monitor: ["val_loss","val_sw_cnt"]
+  monitor: ["val_loss","val_num_switches"]
   verbose: true
   save_last: true
   dirpath: null
@@ -133,3 +139,8 @@ trainer:
   log_every_n_steps: 1
   max_epochs: 100
   min_epochs: 10
+
+view_batch:
+  enable: False
+  num_frames: 0
+  no_train: False

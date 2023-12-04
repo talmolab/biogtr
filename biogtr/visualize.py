@@ -2,9 +2,7 @@
 from scipy.interpolate import interp1d
 from copy import deepcopy
 from tqdm import tqdm
-from matplotlib import pyplot as plt
 from omegaconf import DictConfig
-from tqdm import tqdm
 
 import seaborn as sns
 import imageio
@@ -12,14 +10,13 @@ import hydra
 import pandas as pd
 import numpy as np
 import cv2
-import imageio
 
 
 palette = sns.color_palette("tab10")
 
 
 def fill_missing(data: np.ndarray, kind: str = "linear") -> np.ndarray:
-    """Fills missing values independently along each dimension after the first.
+    """Fill missing values independently along each dimension after the first.
 
     Args:
         data: the array for which to fill missing value
@@ -70,7 +67,7 @@ def annotate_video(
     centroids: bool = True,
     poses=False,
     save_path: str = "debug_animal",
-    fps: int = 30
+    fps: int = 30,
 ) -> list:
     """Annotate video frames with labels.
 
@@ -90,15 +87,13 @@ def annotate_video(
     Returns:
         A list of annotated video frames
     """
-    
     writer = imageio.get_writer(save_path, fps=fps)
     color_palette = deepcopy(color_palette)
-    annotated_frames = []
 
     if trails:
         track_trails = {}
     try:
-        for i in tqdm(sorted(labels["Frame"].unique()), desc = 'Frame', unit='Frame'):
+        for i in tqdm(sorted(labels["Frame"].unique()), desc="Frame", unit="Frame"):
             frame = video.get_data(i)
             if frame.shape[0] == 1 or frame.shape[-1] == 1:
                 frame = cv2.cvtColor((frame * 255).astype(np.uint8), cv2.COLOR_GRAY2RGB)
@@ -228,12 +223,12 @@ def annotate_video(
                         thickness=2,
                     )
             writer.append_data(frame)
-            
+
     except Exception as e:
         writer.close()
         print(e)
         return False
-    
+
     writer.close()
     return True
 
@@ -284,10 +279,7 @@ def bold(val: float, thresh: float = 0.01) -> str:
 
 @hydra.main(config_path=None, config_name=None, version_base=None)
 def main(cfg: DictConfig):
-    """Main function for visualizations script.
-
-    Takes in a path to a video + labels file, annotates a video and saves it to the specified path
-    """
+    """Take in a path to a video + labels file, annotates a video and saves it to the specified path."""
     labels = pd.read_csv(cfg.labels_path)
     video = imageio.get_reader(cfg.vid_path, "ffmpeg")
     annotated_frames = annotate_video(video, labels, **cfg.annotate)

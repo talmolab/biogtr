@@ -72,7 +72,7 @@ class ATTWeightHead(torch.nn.Module):
         num_layers: int,
         dropout: float,
     ):
-        """Initializes an instance of ATTWeightHead.
+        """Initialize an instance of ATTWeightHead.
 
         Args:
             feature_dim: The dimensionality of input features.
@@ -89,7 +89,7 @@ class ATTWeightHead(torch.nn.Module):
         query: torch.Tensor,
         key: torch.Tensor,
     ) -> torch.Tensor:
-        """Computes the attention weights of a query tensor using the key tensor.
+        """Compute the attention weights of a query tensor using the key tensor.
 
         Args:
             query: Input tensor of shape (batch_size, num_frame_instances, feature_dim).

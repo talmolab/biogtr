@@ -53,21 +53,20 @@ class TrackingDataset(LightningDataModule):
         self.test_dl = test_dl
 
     def setup(self, stage=None):
-        """Setup function needed for lightning dataset.
+        """Set up lightning dataset.
 
         UNUSED.
         """
         pass
 
     def train_dataloader(self) -> DataLoader:
-        """Getter for train_dataloader.
+        """Get train_dataloader.
 
         Returns: The Training Dataloader.
         """
         if self.train_dl is None and self.train_ds is None:
             return None
         elif self.train_dl is None:
-                
             return DataLoader(
                 self.train_ds,
                 batch_size=1,
@@ -75,13 +74,15 @@ class TrackingDataset(LightningDataModule):
                 pin_memory=False,
                 collate_fn=self.train_ds.no_batching_fn,
                 num_workers=0,
-                generator=torch.Generator(device="cuda") if torch.cuda.is_available() else torch.Generator()
+                generator=torch.Generator(device="cuda")
+                if torch.cuda.is_available()
+                else torch.Generator(),
             )
         else:
             return self.train_dl
 
     def val_dataloader(self) -> DataLoader:
-        """Getter for val dataloader.
+        """Get val dataloader.
 
         Returns: The validation dataloader.
         """
@@ -101,7 +102,7 @@ class TrackingDataset(LightningDataModule):
             return self.val_dl
 
     def test_dataloader(self) -> DataLoader:
-        """Getter for test dataloader.
+        """Get.
 
         Returns: The test dataloader
         """

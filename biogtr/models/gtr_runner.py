@@ -1,7 +1,4 @@
 """Module containing training, validation and inference logic."""
-
-from typing import Any, Optional
-from pytorch_lightning.utilities.types import STEP_OUTPUT
 import torch
 from biogtr.inference.tracker import Tracker
 from biogtr.inference import metrics
@@ -24,8 +21,16 @@ class GTRRunner(LightningModule):
         loss_cfg: dict = {},
         optimizer_cfg: dict = None,
         scheduler_cfg: dict = None,
-        metrics: dict[str,list[str]] = {"train": ["num_switches"], "val": ["num_switches"], "test": ["num_switches"]},
-        persistent_tracking: dict[str, bool] = {"train": False, "val": True, "test": True}
+        metrics: dict[str, list[str]] = {
+            "train": ["num_switches"],
+            "val": ["num_switches"],
+            "test": ["num_switches"],
+        },
+        persistent_tracking: dict[str, bool] = {
+            "train": False,
+            "val": True,
+            "test": True,
+        },
     ):
         """Initialize a lightning module for GTR.
 
@@ -36,9 +41,8 @@ class GTRRunner(LightningModule):
             optimizer_cfg: hyper parameters used for optimizer.
                        Only used to overwrite `configure_optimizer`
             scheduler_cfg: hyperparameters for lr_scheduler used to overwrite `configure_optimizer
-            train_metrics: a list of metrics to be calculated during training
-            val_metrics: a list of metrics to be calculated during validation
-            test_metrics: a list of metrics to be calculated at test time
+            metrics: a dict containing the metrics to be computed during train, val, and test.
+            persistent_tracking: a dict containing whether to use persistent tracking during train, val and test inference.
         """
         super().__init__()
         self.save_hyperparameters()
@@ -52,8 +56,9 @@ class GTRRunner(LightningModule):
 
         self.metrics = metrics
         self.persistent_tracking = persistent_tracking
+
     def forward(self, instances) -> torch.Tensor:
-        """The forward pass of the lightning module.
+        """Execute forward pass of the lightning module.
 
         Args:
             instances: a list of dicts where each dict is a frame with gt data
@@ -61,14 +66,15 @@ class GTRRunner(LightningModule):
         Returns:
             An association matrix between objects
         """
-        if sum([frame['num_detected'] for frame in instances]) > 0:
-            return self.model(instances)
+        if sum([frame.num_detected for frame in instances]) > 0:
+            asso_preds, _ = self.model(instances)
+            return asso_preds
         return None
 
     def training_step(
         self, train_batch: list[dict], batch_idx: int
     ) -> dict[str, float]:
-        """Method outlining the training procedure for model.
+        """Execute single training step for model.
 
         Args:
             train_batch: A single batch from the dataset which is a list of dicts
@@ -80,13 +86,13 @@ class GTRRunner(LightningModule):
         """
         result = self._shared_eval_step(train_batch[0], mode="train")
         self.log_metrics(result, "train")
-                         
+
         return result
 
     def validation_step(
         self, val_batch: list[dict], batch_idx: int
     ) -> dict[str, float]:
-        """Method outlining the val procedure for model.
+        """Execute single val step for model.
 
         Args:
             val_batch: A single batch from the dataset which is a list of dicts
@@ -96,13 +102,13 @@ class GTRRunner(LightningModule):
         Returns:
             A dict containing the val loss plus any other metrics specified
         """
-        result = self._shared_eval_step(val_batch[0], mode = "val")
+        result = self._shared_eval_step(val_batch[0], mode="val")
         self.log_metrics(result, "val")
-        
+
         return result
 
     def test_step(self, test_batch: list[dict], batch_idx: int) -> dict[str, float]:
-        """Method outlining the test procedure for model.
+        """Execute single test step for model.
 
         Args:
             val_batch: A single batch from the dataset which is a list of dicts
@@ -114,11 +120,11 @@ class GTRRunner(LightningModule):
         """
         result = self._shared_eval_step(test_batch[0], mode="test")
         self.log_metrics(result, "test")
-        
+
         return result
 
     def predict_step(self, batch: list[dict], batch_idx: int) -> dict:
-        """Method describing inference for model.
+        """Run inference for model.
 
         Computes association + assignment.
 
@@ -135,7 +141,7 @@ class GTRRunner(LightningModule):
         return instances_pred
 
     def _shared_eval_step(self, instances, mode):
-        """Helper function for running evaluation used by train, test, and val steps.
+        """Run evaluation used by train, test, and val steps.
 
         Args:
             instances: A list of dicts where each dict is a frame containing gt data
@@ -147,10 +153,8 @@ class GTRRunner(LightningModule):
         try:
             eval_metrics = self.metrics[mode]
             persistent_tracking = self.persistent_tracking[mode]
-            if self.model.transformer.return_embedding:
-                logits, _ = self(instances)
-            else:
-                logits = self(instances)
+
+            logits = self(instances)
 
             if not logits:
                 return None
@@ -165,8 +169,10 @@ class GTRRunner(LightningModule):
                 clearmot = metrics.get_pymotmetrics(instances_mm, eval_metrics)
                 return_metrics.update(clearmot.to_dict())
         except Exception as e:
-            print(f'Failed on frame {instances[0]["frame_id"]} of video {instances[0]["video_id"]}')
-            raise(e)
+            print(
+                f"Failed on frame {instances[0].frame_id} of video {instances[0].video_id}"
+            )
+            raise (e)
         return return_metrics
 
     def configure_optimizers(self) -> dict:
@@ -199,8 +205,14 @@ class GTRRunner(LightningModule):
                 "frequency": 10,
             },
         }
-    
-    def log_metrics(self, result, mode):
+
+    def log_metrics(self, result: dict, mode: str) -> None:
+        """Log metrics computed during evaluation.
+
+        Args:
+            result: A dict containing metrics to be logged.
+            mode: One of {'train', 'test' or 'val'}. Used as prefix while logging.
+        """
         if result:
             for metric, val in result.items():
-                self.log(f"{mode}_{metric}", val, on_step = True, on_epoch=True)
+                self.log(f"{mode}_{metric}", val, on_step=True, on_epoch=True)

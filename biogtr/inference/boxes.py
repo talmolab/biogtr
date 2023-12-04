@@ -1,5 +1,5 @@
 """Module containing Boxes class."""
-from typing import List, Tuple, Union
+from typing import List, Tuple
 import torch
 
 
@@ -56,7 +56,7 @@ class Boxes:
         return Boxes(self.tensor.to(device=device))
 
     def area(self) -> torch.Tensor:
-        """Computes the area of all the boxes.
+        """Compute the area of all the boxes.
 
         Returns:
             torch.Tensor: a vector with areas of each box.

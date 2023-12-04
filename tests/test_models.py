@@ -2,6 +2,7 @@
 import pytest
 import torch
 import numpy as np
+from biogtr.data_structures import Frame, Instance
 from biogtr.models.attention_head import MLP, ATTWeightHead
 from biogtr.models.embedding import Embedding
 from biogtr.models.global_tracking_transformer import GlobalTrackingTransformer
@@ -207,20 +208,19 @@ def test_transformer_basic():
         feature_dim_attn_head=feats,
     )
 
-    instances = []
+    frames = []
 
     for i in range(num_frames):
-        instances.append(
-            {
-                "frame_id": torch.tensor(i),
-                "img_shape": torch.tensor(img_shape),
-                "num_detected": torch.tensor([num_detected]),
-                "bboxes": torch.rand(size=(num_detected, 4)),
-                "features": torch.rand(size=(num_detected, feats)),
-            }
-        )
+        instances = []
+        for j in range(num_detected):
+            instances.append(
+                Instance(
+                    bbox=torch.rand(size=(1, 4)), features=torch.rand(size=(1, feats))
+                )
+            )
+        frames.append(Frame(video_id=0, frame_id=i, instances=instances))
 
-    asso_preds = transformer(instances)
+    asso_preds, _ = transformer(frames)
 
     assert asso_preds[0].size() == (num_detected * num_frames,) * 2
 
@@ -270,18 +270,17 @@ def test_transformer_embedding():
     num_detected = 10
     img_shape = (1, 50, 50)
 
-    instances = []
+    frames = []
 
     for i in range(num_frames):
-        instances.append(
-            {
-                "frame_id": torch.tensor(i),
-                "img_shape": torch.tensor(img_shape),
-                "num_detected": torch.tensor([num_detected]),
-                "bboxes": torch.rand(size=(num_detected, 4)),
-                "features": torch.rand(size=(num_detected, feats)),
-            }
-        )
+        instances = []
+        for j in range(num_detected):
+            instances.append(
+                Instance(
+                    bbox=torch.rand(size=(1, 4)), features=torch.rand(size=(1, feats))
+                )
+            )
+        frames.append(Frame(video_id=0, frame_id=i, instances=instances))
 
     embedding_meta = {
         "embedding_type": "learned_pos_temp",
@@ -302,7 +301,7 @@ def test_transformer_embedding():
         return_embedding=True,
     )
 
-    asso_preds, embedding = transformer(instances)
+    asso_preds, embedding = transformer(frames)
 
     assert asso_preds[0].size() == (num_detected * num_frames,) * 2
     assert embedding.size() == (num_detected * num_frames, 1, feats)
@@ -315,17 +314,18 @@ def test_tracking_transformer():
     num_detected = 20
     img_shape = (1, 128, 128)
 
-    instances = []
+    frames = []
 
     for i in range(num_frames):
-        instances.append(
-            {
-                "frame_id": torch.tensor(i),
-                "img_shape": torch.tensor(img_shape),
-                "num_detected": torch.tensor([num_detected]),
-                "crops": torch.rand(size=(num_detected, 1, 64, 64)),
-                "bboxes": torch.rand(size=(num_detected, 4)),
-            }
+        instances = []
+        for j in range(num_detected):
+            instances.append(
+                Instance(
+                    bbox=torch.rand(size=(1, 4)), crop=torch.rand(size=(1, 1, 64, 64))
+                )
+            )
+        frames.append(
+            Frame(video_id=0, frame_id=i, img_shape=img_shape, instances=instances)
         )
 
     embedding_meta = {
@@ -347,7 +347,7 @@ def test_tracking_transformer():
         return_embedding=True,
     )
 
-    asso_preds, embedding = tracking_transformer(instances)
+    asso_preds, embedding = tracking_transformer(frames)
 
     assert asso_preds[0].size() == (num_detected * num_frames,) * 2
     assert embedding.size() == (num_detected * num_frames, 1, feats)

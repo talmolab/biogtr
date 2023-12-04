@@ -1,6 +1,7 @@
 """Module containing GTR model used for training."""
 from biogtr.models.transformer import Transformer
 from biogtr.models.visual_encoder import VisualEncoder
+from biogtr.data_structures import Frame
 from torch import nn
 
 # todo: do we want to handle params with configs already here?
@@ -97,33 +98,26 @@ class GlobalTrackingTransformer(nn.Module):
             decoder_self_attn=decoder_self_attn,
         )
 
-    def forward(
-        self,
-        instances: list[dict],
-        all_instances: list[dict] = None,
-        query_frame: int = None,
-    ):
-        """Forward pass of GTR Model to get asso matrix.
+    def forward(self, frames: list[Frame], query_frame: int = None):
+        """Execute forward pass of GTR Model to get asso matrix.
 
         Args:
-            instances: List of dicts from chunk containing crops of objects + gt label info
-            all_instances: List of dicts containing crops of objects + gt label info. Used for stitching together full trajectory
+            frames: List of Frames from chunk containing crops of objects + gt label info
             query_frame: Frame index used as query for self attention. Only used in sliding inference where query frame is the last frame in the window.
 
         Returns:
             An N_T x N association matrix
         """
         # Extract feature representations with pre-trained encoder.
-        for frame in instances:
-            if (frame["num_detected"] > 0).item(): 
-                if "features" not in frame.keys() or frame['features'] == None or len(frame["features"]) == 0:
-                    z = self.visual_encoder(frame["crops"])
-                    frame["features"] = z
+        for frame in frames:
+            if frame.has_instances():
+                if not frame.has_features():
+                    crops = frame.get_crops()
+                    z = self.visual_encoder(crops)
 
-        # Extract association matrix with transformer.
-        if self.transformer.return_embedding:
-            asso_preds, emb = self.transformer(instances, query_frame=query_frame)
-        else:
-            asso_preds = self.transformer(instances, query_frame=query_frame)
+                    for i, z_i in enumerate(z):
+                        frame.instances[i].features = z_i
 
-        return (asso_preds, emb) if self.transformer.return_embedding else asso_preds
+        asso_preds, emb = self.transformer(frames, query_frame=query_frame)
+
+        return asso_preds, emb

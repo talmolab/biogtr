@@ -43,7 +43,7 @@ class Config:
         return f"Config({self.cfg})"
 
     def __str__(self):
-        """String representation of config class."""
+        """Return a string representation of config class."""
         return f"Config({self.cfg})"
 
     def set_hparams(self, hparams: dict) -> bool:
@@ -92,20 +92,21 @@ class Config:
 
     def get_gtr_runner(self):
         """Get lightning module for training, validation, and inference."""
-        
         tracker_params = self.cfg.tracker
         optimizer_params = self.cfg.optimizer
         scheduler_params = self.cfg.scheduler
         loss_params = self.cfg.loss
         gtr_runner_params = self.cfg.runner
-        
+
         if self.cfg.model.ckpt_path is not None and self.cfg.model.ckpt_path != "":
-            model = GTRRunner.load_from_checkpoint(self.cfg.model.ckpt_path,
-                                                   tracker_cfg = tracker_params,
-                                                   train_metrics=self.cfg.runner.train_metrics,
-                                                  val_metrics=self.cfg.runner.val_metrics,
-                                                  test_metrics=self.cfg.runner.test_metrics)
-            
+            model = GTRRunner.load_from_checkpoint(
+                self.cfg.model.ckpt_path,
+                tracker_cfg=tracker_params,
+                train_metrics=self.cfg.runner.train_metrics,
+                val_metrics=self.cfg.runner.val_metrics,
+                test_metrics=self.cfg.runner.test_metrics,
+            )
+
         else:
             model_params = self.cfg.model
             model = GTRRunner(
@@ -186,13 +187,13 @@ class Config:
             torch.multiprocessing.set_sharing_strategy("file_system")
         else:
             pin_memory = False
-        
+
         return torch.utils.data.DataLoader(
             dataset=dataset,
             batch_size=1,
             pin_memory=pin_memory,
             collate_fn=dataset.no_batching_fn,
-            **dataloader_params
+            **dataloader_params,
         )
 
     def get_optimizer(self, params: Iterable) -> torch.optim.Optimizer:
@@ -282,7 +283,7 @@ class Config:
         callbacks: list[pl.callbacks.Callback],
         logger: pl.loggers.WandbLogger,
         devices: int = 1,
-        accelerator: str = None
+        accelerator: str = None,
     ) -> pl.Trainer:
         """Getter for the lightning trainer.
 
@@ -297,12 +298,12 @@ class Config:
             A lightning Trainer with specified params
         """
         if "accelerator" not in self.cfg.trainer:
-            self.set_hparams({'trainer.accelerator': accelerator})
+            self.set_hparams({"trainer.accelerator": accelerator})
         if "devices" not in self.cfg.trainer:
-            self.set_hparams({'trainer.devices': devices})
+            self.set_hparams({"trainer.devices": devices})
 
         trainer_params = self.cfg.trainer
-        
+
         return pl.Trainer(
             callbacks=callbacks,
             logger=logger,

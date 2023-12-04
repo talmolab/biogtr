@@ -1,12 +1,13 @@
 """Module containing model helper functions."""
 from copy import deepcopy
-from typing import Dict, List, Tuple, Iterable
+from typing import List, Tuple, Iterable
 from pytorch_lightning import loggers
+from biogtr.data_structures import Frame
 import torch
 
 
-def get_boxes_times(instances: List[Dict]) -> Tuple[torch.Tensor, torch.Tensor]:
-    """Extracts the bounding boxes and frame indices from the input list of instances.
+def get_boxes_times(frames: List[Frame]) -> Tuple[torch.Tensor, torch.Tensor]:
+    """Extract the bounding boxes and frame indices from the input list of instances.
 
     Args:
         instances (List[Dict]): List of instance dictionaries
@@ -17,10 +18,10 @@ def get_boxes_times(instances: List[Dict]) -> Tuple[torch.Tensor, torch.Tensor]:
                                             indices, respectively.
     """
     boxes, times = [], []
-    _, h, w = instances[0]["img_shape"].flatten()
+    _, h, w = frames[0].img_shape.flatten()
 
-    for fidx, instance in enumerate(instances):
-        bbox = deepcopy(instance["bboxes"])
+    for fidx, frame in enumerate(frames):
+        bbox = deepcopy(frame.get_bboxes())
         bbox[:, [0, 2]] /= w
         bbox[:, [1, 3]] /= h
 
@@ -33,7 +34,7 @@ def get_boxes_times(instances: List[Dict]) -> Tuple[torch.Tensor, torch.Tensor]:
 
 
 def softmax_asso(asso_output: list[torch.Tensor]) -> list[torch.Tensor]:
-    """Applies the softmax activation function on asso_output.
+    """Apply the softmax activation function on asso_output.
 
     Args:
         asso_output: Raw logits output of the tracking transformer. A list of

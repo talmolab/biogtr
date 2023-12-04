@@ -11,12 +11,11 @@ Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
     * added fixed embeddings over boxes
 """
 
-
+from biogtr.data_structures import Frame
 from biogtr.models.attention_head import ATTWeightHead
 from biogtr.models.embedding import Embedding
 from biogtr.models.model_utils import get_boxes_times
 from torch import nn
-from typing import Dict, List, Tuple
 import copy
 import torch
 import torch.nn.functional as F
@@ -163,11 +162,11 @@ class Transformer(torch.nn.Module):
             if p.dim() > 1:
                 nn.init.xavier_uniform_(p)
 
-    def forward(self, instances, query_frame=None):
-        """A forward pass through the transformer and attention head.
+    def forward(self, frames: list[Frame], query_frame: int = None):
+        """Execute a forward pass through the transformer and attention head.
 
         Args:
-            instances: A list of dictionaries, one dictionary for each frame
+            frames: A list of Frames (See `biogtr.data_structures.Frame for more info.)
             query_frame: An integer (k) specifying the frame within the window to be queried.
 
         Returns:
@@ -175,33 +174,21 @@ class Transformer(torch.nn.Module):
                 L: number of decoder blocks
                 n_query: number of instances in current query/frame
                 total_instances: number of instances in window
-
-        # ------------------------- An example of instances ------------------------ #
-        instances = [
-            {
-                # Each dictionary is a frame.
-                "frame_id": frame index int,
-                "num_detected": N_i, # num of detected instances in i-th frame
-                "bboxes": (N_i, 4),  # in pascal_voc unrounded unnormalized
-                "features": (N_i, embed_dim), # embed_dim = embedding dimension
-                ...
-            },
-            ...
-        ]
         """
         reid_features = torch.cat(
-            [frame["features"] for frame in instances], dim=0
+            [frame.get_features() for frame in frames], dim=0
         ).unsqueeze(0)
 
-        window_length = len(instances)
-        instances_per_frame = [frame["num_detected"] for frame in instances]
+        window_length = len(frames)
+        instances_per_frame = [frame.num_detected for frame in frames]
         total_instances = sum(instances_per_frame)
         embed_dim = reid_features.shape[-1]
 
+        # print(f'T: {window_length}; N: {total_instances}; N_t: {instances_per_frame} n_reid: {reid_features.shape}')
         if self.embedding_meta:
             kwargs = self.embedding_meta.get("kwargs", {})
 
-            pred_box, pred_time = get_boxes_times(instances)  # total_instances x 4
+            pred_box, pred_time = get_boxes_times(frames)  # total_instances x 4
 
             embedding_type = self.embedding_meta["embedding_type"]
 
@@ -227,21 +214,32 @@ class Transformer(torch.nn.Module):
                 pos_emb = (pos_emb + temp_emb) / 2.0
 
             pos_emb = pos_emb.view(1, total_instances, embed_dim)
-            pos_emb = pos_emb.permute(1, 0, 2)  # (total_instances, batch_size, embed_dim)
+            pos_emb = pos_emb.permute(
+                1, 0, 2
+            )  # (total_instances, batch_size, embed_dim)
         else:
             pos_emb = None
 
         query_inds = None
         n_query = total_instances
         if query_frame is not None:
-            
-            query_inds = [x for x in range(sum(instances_per_frame[:query_frame]), sum(instances_per_frame[: query_frame + 1]))]
+            query_inds = [
+                x
+                for x in range(
+                    sum(instances_per_frame[:query_frame]),
+                    sum(instances_per_frame[: query_frame + 1]),
+                )
+            ]
             n_query = len(query_inds)
 
         batch_size, total_instances, embed_dim = reid_features.shape
-        reid_features = reid_features.permute(1, 0, 2)  # (total_instances x batch_size x embed_dim)
+        reid_features = reid_features.permute(
+            1, 0, 2
+        )  # (total_instances x batch_size x embed_dim)
 
-        memory = self.encoder(reid_features, pos_emb=pos_emb)  # (total_instances, batch_size, embed_dim)
+        memory = self.encoder(
+            reid_features, pos_emb=pos_emb
+        )  # (total_instances, batch_size, embed_dim)
 
         if query_inds is not None:
             tgt = reid_features[query_inds]
@@ -260,7 +258,9 @@ class Transformer(torch.nn.Module):
         )  # (L, n_query, batch_size, embed_dim)
 
         feats = hs.transpose(1, 2)  # # (L, batch_size, n_query, embed_dim)
-        memory = memory.permute(1, 0, 2).view(batch_size, total_instances, embed_dim)  # (batch_size, total_instances, embed_dim)
+        memory = memory.permute(1, 0, 2).view(
+            batch_size, total_instances, embed_dim
+        )  # (batch_size, total_instances, embed_dim)
 
         asso_output = []
         for x in feats:
@@ -269,7 +269,7 @@ class Transformer(torch.nn.Module):
             asso_output.append(self.attn_head(x, memory).view(n_query, total_instances))
 
         # (L=1, n_query, total_instances)
-        return (asso_output, pos_emb) if self.return_embedding else asso_output
+        return (asso_output, pos_emb) if self.return_embedding else (asso_output, None)
 
 
 class TransformerEncoder(nn.Module):
@@ -292,7 +292,7 @@ class TransformerEncoder(nn.Module):
         self.norm = norm
 
     def forward(self, src: torch.Tensor, pos_emb: torch.Tensor = None) -> torch.Tensor:
-        """Forward pass of encoder layer.
+        """Execute a forward pass of encoder layer.
 
         Args:
             src: The input tensor of shape (n_query, batch_size, embed_dim).
@@ -339,7 +339,7 @@ class TransformerDecoder(nn.Module):
     def forward(
         self, tgt: torch.Tensor, memory: torch.Tensor, pos_emb=None, tgt_pos_emb=None
     ):
-        """Forward pass of the decoder block.
+        """Execute a forward pass of the decoder block.
 
         Args:
             tgt: Target sequence for decoder to generate (n_query, batch_size, embed_dim).
@@ -414,7 +414,7 @@ class TransformerEncoderLayer(nn.Module):
         self.activation = _get_activation_fn(activation)
 
     def forward(self, src: torch.Tensor, pos: torch.Tensor = None):
-        """Forward pass of the encoder layer.
+        """Execute a forward pass of the encoder layer.
 
         Args:
             src: Input sequence for encoder (n_query, batch_size, embed_dim).
@@ -488,7 +488,7 @@ class TransformerDecoderLayer(nn.Module):
         self.activation = _get_activation_fn(activation)
 
     def forward(self, tgt, memory, pos=None, tgt_pos=None):
-        """Forward pass of decoder layer.
+        """Execute forward pass of decoder layer.
 
         Args:
             tgt: Target sequence for decoder to generate (n_query, batch_size, embed_dim).

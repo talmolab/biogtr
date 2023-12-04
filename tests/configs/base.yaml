@@ -55,14 +55,16 @@ tracker:
   max_center_dist: null
 
 runner:
-  train_metrics: [""]
-  val_metrics: ["sw_cnt"]
-  test_metrics: ["sw_cnt"]
+  metrics: 
+    train: [""]
+    val: ["sw_cnt"]
+    test: ["sw_cnt"]
 
 dataset:
   train_dataset:
     slp_files: ['tests/data/sleap/two_flies.slp']
     video_files: ['tests/data/sleap/two_flies.mp4']
+    anchor: "thorax"
     padding: 5
     crop_size: 128
     chunk: true
@@ -71,6 +73,7 @@ dataset:
   val_dataset:
     slp_files: ['tests/data/sleap/two_flies.slp']
     video_files: ['tests/data/sleap/two_flies.mp4']
+    anchor: "thorax"
     padding: 5
     crop_size: 128
     chunk: True
@@ -79,6 +82,7 @@ dataset:
   test_dataset:
     slp_files: ['tests/data/sleap/two_flies.slp']
     video_files: ['tests/data/sleap/two_flies.mp4']
+    anchor: "thorax"
     padding: 5
     crop_size: 128
     chunk: True
