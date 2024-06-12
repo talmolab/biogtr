@@ -4,6 +4,7 @@ from scipy.interpolate import interp1d
 from copy import deepcopy
 from tqdm import tqdm
 from omegaconf import DictConfig
+from typing import Union
 
 import seaborn as sns
 import imageio
@@ -60,7 +61,7 @@ def annotate_video(
     video: "imageio.core.format.Reader",
     labels: pd.DataFrame,
     key: str,
-    color_palette: list = palette,
+    color_palette: Union[list, str] = palette,
     trails: int = 2,
     boxes: int = (64, 64),
     names: bool = True,
@@ -69,7 +70,7 @@ def annotate_video(
     poses: bool = False,
     save_path: str = "debug_animal.mp4",
     fps: int = 30,
-    alpha=0.2,
+    alpha: float = 0.2,
 ) -> list:
     """Annotate video frames with labels.
 
@@ -80,17 +81,23 @@ def annotate_video(
         labels: The pandas dataframe containing the centroid and/or pose locations of the instances
         key: The key where labels are stored in the dataframe - mostly used for choosing whether to annotate based on pred or gt labels
         color_palette: The matplotlib colorpalette to use for annotating the video. Defaults to `tab10`
-        trails: Whether or not to include trajectory history
+        trails: The size of the trajectory trail. If trails size <= 0 or None then it is not added
         boxes: The size of the bbox. If bbox size <= 0 or None then it is not added
         names: Whether or not to annotate with name
-        centroids: Whether or not to annotate with
+        centroids: The size of the centroid. If centroid size <= 0 or None then it is not added
         poses: Whether or not to annotate with poses
+        fps: The frame rate of the generated video
+        alpha: The opacity of the annotations.
 
     Returns:
         A list of annotated video frames
     """
     writer = imageio.get_writer(save_path, fps=fps)
-    color_palette = deepcopy(color_palette)
+    color_palette = (
+        sns.color_palette(color_palette)
+        if isinstance(color_palette, str)
+        else deepcopy(color_palette)
+    )
 
     if trails:
         track_trails = {}

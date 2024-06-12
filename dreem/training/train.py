@@ -17,7 +17,7 @@ import torch
 import torch.multiprocessing
 
 
-@hydra.main(config_path="configs", config_name=None, version_base=None)
+@hydra.main(config_path=None, config_name=None, version_base=None)
 def run(cfg: DictConfig):
     """Train model based on config.
 
@@ -107,4 +107,4 @@ if __name__ == "__main__":
     # deploy batch train job:
     # python train.py --config-dir=./configs --config-name=base +batch_config=test_batch_train.csv
 
-    train()
+    run()

@@ -1,7 +1,7 @@
 # to implement - config class that handles getters/setters
 """Data structures for handling config parsing."""
 
-from omegaconf import DictConfig, OmegaConf
+from omegaconf import DictConfig, OmegaConf, open_dict
 from pprint import pprint
 from typing import Union, Iterable
 from pathlib import Path
@@ -32,7 +32,8 @@ class Config:
 
         if params_cfg:
             pprint(f"Overwriting base config with {params_cfg}")
-            self.cfg = OmegaConf.merge(base_cfg, params_cfg)  # merge configs
+            with open_dict(base_cfg):
+                self.cfg = OmegaConf.merge(base_cfg, params_cfg)  # merge configs
         else:
             self.cfg = cfg
 
@@ -87,7 +88,7 @@ class Config:
         """
         from dreem.models import GlobalTrackingTransformer
 
-        model_params = self.cfg.model
+        model_params = OmegaConf.to_container(self.cfg.model)
         ckpt_path = model_params.pop("ckpt_path", None)
 
         if ckpt_path is not None and len(ckpt_path) > 0:
@@ -116,7 +117,7 @@ class Config:
         scheduler_params = self.cfg.scheduler
         loss_params = self.cfg.loss
         gtr_runner_params = self.cfg.runner
-        model_params = self.cfg.model
+        model_params = OmegaConf.to_container(self.cfg.model)
 
         ckpt_path = model_params.pop("ckpt_path", None)
 
@@ -155,9 +156,13 @@ class Config:
         if dir_cfg:
             labels_suff = dir_cfg.labels_suffix
             vid_suff = dir_cfg.vid_suffix
-
-            label_files = glob.glob(f"{dir_cfg.path}/*.{labels_suff}")
-            vid_files = glob.glob(f"{dir_cfg.path}/*.{vid_suff}")
+            labels_path = f"{dir_cfg.path}/*{labels_suff}"
+            vid_path = f"{dir_cfg.path}/*{vid_suff}"
+            print(f"Searching for labels matching {labels_path}")
+            label_files = glob.glob(labels_path)
+            print(f"Searching for videos matching {vid_path}")
+            vid_files = glob.glob(vid_path)
+            print(f"Found {len(label_files)} labels and {len(vid_files)} videos")
             return label_files, vid_files
 
         return None, None
@@ -186,7 +191,7 @@ class Config:
             raise ValueError(
                 "`mode` must be one of ['train', 'val','test'], not '{mode}'"
             )
-
+        dataset_params = OmegaConf.to_container(dataset_params)
         label_files, vid_files = self.get_data_paths(dataset_params)
         # todo: handle this better
         if "slp_files" in dataset_params:
@@ -343,14 +348,12 @@ class Config:
         # convert to dict to enable extracting/removing params
         checkpoint_params = OmegaConf.to_container(self.cfg.checkpointing, resolve=True)
         logging_params = self.cfg.logging
-        if "dirpath" not in checkpoint_params or checkpoint_params["dirpath"] is None:
+        dirpath = checkpoint_params.pop("dirpath", None)
+        if dirpath is None:
             if "group" in logging_params:
                 dirpath = f"./models/{logging_params.group}/{logging_params.name}"
             else:
                 dirpath = f"./models/{logging_params.name}"
-
-        else:
-            dirpath = checkpoint_params["dirpath"]
 
         dirpath = Path(dirpath).resolve()
         if not Path(dirpath).exists():
@@ -361,7 +364,6 @@ class Config:
                     f"Cannot create a new folder. Check the permissions to the given Checkpoint directory. \n {e}"
                 )
 
-        _ = checkpoint_params.pop("dirpath")
         checkpointers = []
         monitor = checkpoint_params.pop("monitor")
         for metric in monitor:

@@ -53,7 +53,9 @@ dev = [
 ]
 
 [project.scripts]
-dreem = "dreem.cli:cli"
+dreem-train = "dreem.training.train:run"
+dreem-track = "dreem.inference.track:run"
+dreem-visualize = "dreem.io.visualize:main"
 
 [project.urls]
 Homepage = "https://github.com/talmolab/dreem"

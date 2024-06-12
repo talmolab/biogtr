@@ -2,7 +2,8 @@
 
 [![CI](https://github.com/talmolab/dreem/actions/workflows/ci.yml/badge.svg)](https://github.com/talmolab/dreem/actions/workflows/ci.yml)
 [![codecov](https://codecov.io/gh/talmolab/dreem/branch/main/graph/badge.svg?token=Sj8kIFl3pi)](https://codecov.io/gh/talmolab/dreem)
-<!-- [![Release](https://img.shields.io/github/v/release/talmolab/dreem?label=Latest)](https://github.com/talmolab/dream/releases/)
+[![Documentation](https://img.shields.io/badge/Documentation-dreem.sleap.ai-lightgrey)](https://dreem.sleap.ai)
+<!-- [![Release](https://img.shields.io/github/v/release/talmolab/dreem?label=Latest)](https://github.com/talmolab/dreem/releases/)
 [![PyPI](https://img.shields.io/pypi/v/dreem?label=PyPI)](https://pypi.org/project/dreem)
 ![PyPI - Python Version](https://img.shields.io/pypi/pyversions/dreem) -->
 
@@ -148,13 +149,13 @@ The input into our training script is a `.yaml` file that contains all the param
 Once you have your config file and dataset set up, training is as easy as running
 
 ```bash
-python /path/to/dreem/training/train.py --config-base=[CONFIG_DIR] --config-name=[CONFIG_STEM]
+dreem-train --config-base=[CONFIG_DIR] --config-name=[CONFIG_STEM]
 ```
 where `CONFIG_DIR` is the directory that `hydra` should search for the `config.yaml` and `CONFIG_STEM` is the name of the config without the `.yaml` extension.
 
 e.g. If I have a config file called `base.yaml` inside my `/home/aaprasad/dreem_configs` directory I can call
 ```bash
-python /home/aaprasad/dreem/training/train.py --config-base=/home/aaprasad/dreem_configs --config-name=base
+dreem-train --config-base=/home/aaprasad/dreem_configs --config-name=base
 ```
 
 > Note: you can use relative paths as well but may be a bit riskier so we recommend absolute paths whenever possible.
@@ -168,26 +169,26 @@ Instead of changing the `base.yaml` file every time you want to run a different 
 For overriding specific params with a sub-config, you can specify a `params_config` key and path in your `config.yaml` or run
 
 ```bash
-python /path/to/dreem/training/train.py --config-base=[CONFIG_DIR] --config-name=[BASE_CONFIG_STEM] ++params_config="/path/to/params.yaml"
+dreem-train --config-base=[CONFIG_DIR] --config-name=[BASE_CONFIG_STEM] ++params_config="/path/to/params.yaml"
 ```
 
 e.g. If I have a `params_to_override.yaml` file inside my `/home/aaprasad/dreem_configs` directory that contains a only a small selection of parameters that I'd like to override, I can run:
 
 ```bash
-python /home/aaprasad/dreem/training/train.py --config-base=/home/aaprasad/dreem_configs --config-name=base ++params_config=/home/aaprasad/dreem_configs/params_to_override.yaml
+dreem-train --config-base=/home/aaprasad/dreem_configs --config-name=base ++params_config=/home/aaprasad/dreem_configs/params_to_override.yaml
 ```
 
 ##### CLI-based override
 For directly overriding a specific param via the command line directly you can use the `section.param=key` syntax as so:
 
 ```bash
-python /path/to/dreem/training/train.py --config-base=[CONFIG_DIR] --config-name=[BASE_CONFIG_STEM] section.param=value
+dreem-train --config-base=[CONFIG_DIR] --config-name=[BASE_CONFIG_STEM] section.param=value
 ```
 
 e.g If now I want to override a couple parameters again, say change the number of attention heads and change the name of this run in my logger, I can pass `model.head=3` and `logger.name="test_nheads=3"` into 
 
 ```bash
-python /home/aaprasad/dreem/training/train.py --config-base=/home/aaprasad/dreem_configs --config-name=base model.nhead=3 logger.name="test_nheads=3"
+dreem-train --config-base=/home/aaprasad/dreem_configs --config-name=base model.nhead=3 logger.name="test_nheads=3"
 ```
 > Note: using the `section.param` syntax for CLI override will only override if the parameter exists in your config file otherwise an error will be thrown
 > if you'd like add a new parameter you can add `++` to the front of `section.param` e.g `++model.nhead=3`, However in this case, if the parameter exists in the config it will throw an error.
@@ -199,11 +200,11 @@ See [here](https://hydra.cc/docs/advanced/override_grammar/basic/) for more info
 
 > Note: You will usually only need the direct override or the file-based override however you can technically do both via 
 > ```bash
-> python /path/to/dreem/training/train.py --config-base=[CONFIG_DIR] --config-name=[BASE_CONFIG_STEM] ++params_config="/path/to/params.yaml" section.param=value
+> dreem-train --config-base=[CONFIG_DIR] --config-name=[BASE_CONFIG_STEM] ++params_config="/path/to/params.yaml" section.param=value
 > ```
 > e.g. alongside the `params_to_override.yaml`
 > ```bash
-> python /home/aaprasad/dreem/training/train.py --config-base=/home/aaprasad/dreem_configs --config-name=base ++params_config=/home/aaprasad/dreem_configs/params_to_override.yaml model.nhead=3 logger.name="test_nheads=3"
+> dreem-train --config-base=/home/aaprasad/dreem_configs --config-name=base ++params_config=/home/aaprasad/dreem_configs/params_to_override.yaml model.nhead=3 logger.name="test_nheads=3"
 > ```
 > but the `--config-base=[CONFIG_DIR] --config-name=[BASE_CONFIG_STEM]` arguments are always required. 
 > However, be careful to ensure there are no conflicts when combining CLI and file-based override syntax
@@ -260,13 +261,13 @@ Please see the [README](dreem/inference/configs/inference.yaml) in `dreem/infere
 Just like training we can use the hydra syntax for specifying arguments via the cli. Thus you can run inference via:
 
 ```bash
-python /path/to/dreem/inference/inference.py --config-base=[CONFIG_DIR] --config-name=[CONFIG_STEM]
+dreem-track --config-base=[CONFIG_DIR] --config-name=[CONFIG_STEM]
 ```
 
 e.g. If I had an inference config called `track.yaml` inside `/home/aaprasad/dreem_configs` 
 
 ```bash
-python /home/aaprasad/dreem/inference/inference.py --config-base=/home/aaprasad/dreem_configs --config-name=track
+dreem-track --config-base=/home/aaprasad/dreem_configs --config-name=track
 ```
 
 ##### Overriding Parameters.
@@ -275,11 +276,11 @@ Because there aren't as many parameters during inference as during training we r
 In order to override params via the CLI, we can use the same `hydra` `section.param` syntax:
 
 ```bash
-python /path/to/dreem/inference/inference.py --config-base=[CONFIG_DIR] --config-name=[CONFIG_STEM] section.param=[VALUE]
+dreem-track --config-base=[CONFIG_DIR] --config-name=[CONFIG_STEM] section.param=[VALUE]
 ```
 e.g if I want to set the window size of the tracker to 32 instead of 8 through `tracker.window_size=32` and use a different model saved in `/home/aaprasad/models/new_best.ckpt` I can do:
 ```bash
-python /home/aaprasad/dreem/inference/inference.py --config-base=/home/aaprasad/dreem_configs --config-name=track ckpt_path="/home/aaprasad/models/new_best.ckpt" tracker.window_size=32`
+dreem-track --config-base=/home/aaprasad/dreem_configs --config-name=track ckpt_path="/home/aaprasad/models/new_best.ckpt" tracker.window_size=32`
 ```
 #### Output
 This will run inference on the videos/detections you specified in the `dataset.test_dataset` section of the config and save the tracks to individual `[VID_NAME].dreem_inference.slp` files. If an `outdir` is specified in the config it will save to  `./[OUTDIR]/[VID_NAME].dreem_inference.slp`, otherwise it will just save to `./results/[VID_NAME].dreem_inference.slp`. Now you can load the file with `sleap-io` and do what you please!
