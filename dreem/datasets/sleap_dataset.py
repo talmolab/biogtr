@@ -106,7 +106,7 @@ class SleapDataset(BaseDataset):
         # if self.seed is not None:
         #     np.random.seed(self.seed)
         self.labels = [sio.load_slp(slp_file) for slp_file in self.slp_files]
-
+        self.videos = [imageio.get_reader(vid_file) for vid_file in self.vid_files]
         # do we need this? would need to update with sleap-io
 
         # for label in self.labels:
@@ -140,7 +140,7 @@ class SleapDataset(BaseDataset):
 
         video_name = self.video_files[label_idx]
 
-        vid_reader = imageio.get_reader(video_name, "ffmpeg")
+        vid_reader = self.videos[label_idx]
 
         img = vid_reader.get_data(0)
 
@@ -370,3 +370,8 @@ class SleapDataset(BaseDataset):
             frames.append(frame)
 
         return frames
+
+    def __del__(self):
+        """Handle file closing before garbage collection."""
+        for reader in self.videos:
+            reader.close()

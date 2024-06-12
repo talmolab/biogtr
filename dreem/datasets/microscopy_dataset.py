@@ -62,7 +62,7 @@ class MicroscopyDataset(BaseDataset):
             seed,
         )
 
-        self.videos = videos
+        self.vid_files = videos
         self.tracks = tracks
         self.chunk = chunk
         self.clip_length = clip_length
@@ -92,13 +92,19 @@ class MicroscopyDataset(BaseDataset):
             parser(self.tracks[video_idx]) for video_idx in range(len(self.tracks))
         ]
 
+        self.videos = []
+        for vid_file in self.vid_files:
+            if not isinstance(vid_file, list):
+                self.videos.append(data_utils.LazyTiffStack(vid_file))
+            else:
+                self.videos.append([Image.open(frame_file) for frame_file in vid_file])
         self.frame_idx = [
             (
                 torch.arange(Image.open(video).n_frames)
                 if isinstance(video, str)
                 else torch.arange(len(video))
             )
-            for video in self.videos
+            for video in self.vid_files
         ]
 
         # Method in BaseDataset. Creates label_idx and chunked_frame_idx to be
@@ -128,9 +134,6 @@ class MicroscopyDataset(BaseDataset):
 
         video = self.videos[label_idx]
 
-        if not isinstance(video, list):
-            video = data_utils.LazyTiffStack(self.videos[label_idx])
-
         frames = []
         for frame_id in frame_idx:
             instances, gt_track_ids, centroids = [], [], []
@@ -138,7 +141,7 @@ class MicroscopyDataset(BaseDataset):
             img = (
                 video.get_section(frame_id)
                 if not isinstance(video, list)
-                else np.array(Image.open(video[frame_id]))
+                else np.array(video[frame_id])
             )
 
             lf = labels[labels["FRAME"].astype(int) == frame_id.item()]
@@ -202,3 +205,12 @@ class MicroscopyDataset(BaseDataset):
             )
 
         return frames
+
+    def __del__(self):
+        """Handle file closing before deletion."""
+        for vid_reader in self.videos:
+            if not isinstance(vid_reader, list):
+                vid_reader.close()
+            else:
+                for frame_reader in vid_reader:
+                    frame_reader.close()
