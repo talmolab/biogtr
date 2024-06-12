@@ -1,14 +1,15 @@
 """Module containing data classes such as Instances and Frames."""
 
+from __future__ import annotations
 import torch
 import sleap_io as sio
 import numpy as np
 import attrs
 from numpy.typing import ArrayLike
-from typing import Union, List
+from typing import Self
 
 
-def _to_tensor(data: Union[float, ArrayLike]) -> torch.Tensor:
+def _to_tensor(data: float | ArrayLike) -> torch.Tensor:
     """Convert data to tensortype.
 
     Args:
@@ -55,10 +56,12 @@ class Frame:
     )
 
     _instances: list["Instance"] = attrs.field(alias="instances", factory=list)
-    _asso_output: "AssociationMatrix" = attrs.field(alias="asso_output", default=None)
+    _asso_output: "AssociationMatrix" | None = attrs.field(
+        alias="asso_output", default=None
+    )
     _matches: tuple = attrs.field(alias="matches", factory=tuple)
     _traj_score: dict = attrs.field(alias="traj_score", factory=dict)
-    _device: str = attrs.field(alias="device", default=None)
+    _device: str | torch.device | None = attrs.field(alias="device", default=None)
 
     def __attrs_post_init__(self) -> None:
         """Handle more intricate default initializations and moving to device."""
@@ -91,7 +94,7 @@ class Frame:
             ")"
         )
 
-    def to(self, map_location: Union[str, torch.device]) -> "Frame":
+    def to(self, map_location: str | torch.device) -> Self:
         """Move frame to different device or dtype (See `torch.to` for more info).
 
         Args:
@@ -126,9 +129,9 @@ class Frame:
         cls,
         lf: sio.LabeledFrame,
         video_id: int = 0,
-        device: str = None,
+        device: str | None = None,
         **kwargs,
-    ) -> "Frame":
+    ) -> Self:
         """Convert `sio.LabeledFrame` to `dreem.io.Frame`.
 
         Args:
@@ -251,7 +254,7 @@ class Frame:
         self._frame_id = torch.tensor([frame_id])
 
     @property
-    def video(self) -> Union[sio.Video, str]:
+    def video(self) -> sio.Video | str:
         """Get the video associated with the frame.
 
         Returns: An sio.Video object representing the video or a placeholder string
@@ -296,7 +299,7 @@ class Frame:
         self._img_shape = _to_tensor(img_shape)
 
     @property
-    def instances(self) -> List["Instance"]:
+    def instances(self) -> list["Instance"]:
         """A list of instances in the frame.
 
         Returns:
@@ -305,7 +308,7 @@ class Frame:
         return self._instances
 
     @instances.setter
-    def instances(self, instances: List["Instance"]) -> None:
+    def instances(self, instances: list["Instance"]) -> None:
         """Set the frame's instance.
 
         Args:
@@ -390,7 +393,7 @@ class Frame:
             return True
         return False
 
-    def get_traj_score(self, key: str = None) -> Union[dict, ArrayLike, None]:
+    def get_traj_score(self, key: str | None = None) -> dict | ArrayLike | None:
         """Get dictionary containing association matrix between instances and trajectories along postprocessing pipeline.
 
         Args:

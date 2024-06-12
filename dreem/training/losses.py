@@ -2,7 +2,6 @@
 
 from dreem.models.model_utils import get_boxes, get_times
 from torch import nn
-from typing import List, Tuple
 import torch
 import torch.nn.functional as F
 import torchvision
@@ -34,7 +33,7 @@ class AssoLoss(nn.Module):
         self.asso_weight = asso_weight
 
     def forward(
-        self, asso_preds: List[torch.Tensor], frames: List["Frame"]
+        self, asso_preds: list[torch.Tensor], frames: list["Frame"]
     ) -> torch.Tensor:
         """Calculate association loss.
 
@@ -107,7 +106,7 @@ class AssoLoss(nn.Module):
         target_time: torch.Tensor,
         target_inst_id: torch.Tensor,
         n_t: torch.Tensor,
-    ) -> Tuple[torch.Tensor, torch.Tensor]:
+    ) -> tuple[torch.Tensor, torch.Tensor]:
         """Compute the association ground truth for a batch.
 
         Args:

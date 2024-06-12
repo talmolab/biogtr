@@ -31,13 +31,13 @@ class GTRRunner(LightningModule):
 
     def __init__(
         self,
-        model_cfg: dict = None,
-        tracker_cfg: dict = None,
-        loss_cfg: dict = None,
-        optimizer_cfg: dict = None,
-        scheduler_cfg: dict = None,
-        metrics: dict[str, list[str]] = None,
-        persistent_tracking: dict[str, bool] = None,
+        model_cfg: dict | None = None,
+        tracker_cfg: dict | None = None,
+        loss_cfg: dict | None = None,
+        optimizer_cfg: dict | None = None,
+        scheduler_cfg: dict | None = None,
+        metrics: dict[str, list[str]] | None = None,
+        persistent_tracking: dict[str, bool] | None = None,
     ):
         """Initialize a lightning module for GTR.
 
@@ -76,7 +76,7 @@ class GTRRunner(LightningModule):
     def forward(
         self,
         ref_instances: list["dreem.io.Instance"],
-        query_instances: list["dreem.io.Instance"] = None,
+        query_instances: list["dreem.io.Instance"] | None = None,
     ) -> torch.Tensor:
         """Execute forward pass of the lightning module.
 

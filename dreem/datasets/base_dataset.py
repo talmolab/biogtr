@@ -3,7 +3,6 @@
 from dreem.datasets import data_utils
 from dreem.io import Frame
 from torch.utils.data import Dataset
-from typing import List, Union
 import numpy as np
 import torch
 
@@ -20,10 +19,10 @@ class BaseDataset(Dataset):
         chunk: bool,
         clip_length: int,
         mode: str,
-        augmentations: dict = None,
-        n_chunks: Union[int, float] = 1.0,
-        seed: int = None,
-        gt_list: str = None,
+        augmentations: dict | None = None,
+        n_chunks: int | float = 1.0,
+        seed: int | None = None,
+        gt_list: str | None = None,
     ):
         """Initialize Dataset.
 
@@ -122,7 +121,7 @@ class BaseDataset(Dataset):
         """
         return len(self.chunked_frame_idx)
 
-    def no_batching_fn(self, batch: list[Frame]) -> List[Frame]:
+    def no_batching_fn(self, batch: list[Frame]) -> list[Frame]:
         """Collate function used to overwrite dataloader batching function.
 
         Args:
@@ -133,7 +132,7 @@ class BaseDataset(Dataset):
         """
         return batch
 
-    def __getitem__(self, idx: int) -> List[Frame]:
+    def __getitem__(self, idx: int) -> list[Frame]:
         """Get an element of the dataset.
 
         Args:
@@ -160,7 +159,7 @@ class BaseDataset(Dataset):
         """
         raise NotImplementedError("Must be implemented in subclass")
 
-    def get_instances(self, label_idx: List[int], frame_idx: List[int]):
+    def get_instances(self, label_idx: list[int], frame_idx: list[int]):
         """Build chunk of frames.
 
         This method should be implemented in any subclass of the BaseDataset.

@@ -4,7 +4,6 @@ from PIL import Image
 from dreem.datasets import data_utils, BaseDataset
 from dreem.io import Frame, Instance
 from scipy.ndimage import measurements
-from typing import List, Optional, Union
 import albumentations as A
 import numpy as np
 import pandas as pd
@@ -24,10 +23,10 @@ class CellTrackingDataset(BaseDataset):
         chunk: bool = False,
         clip_length: int = 10,
         mode: str = "train",
-        augmentations: Optional[dict] = None,
-        n_chunks: Union[int, float] = 1.0,
-        seed: int = None,
-        gt_list: list[str] = None,
+        augmentations: dict | None = None,
+        n_chunks: int | float = 1.0,
+        seed: int | None = None,
+        gt_list: list[str] | None = None,
     ):
         """Initialize CellTrackingDataset.
 
@@ -116,7 +115,7 @@ class CellTrackingDataset(BaseDataset):
         """
         return self.label_idx[idx], self.chunked_frame_idx[idx]
 
-    def get_instances(self, label_idx: List[int], frame_idx: List[int]) -> List[Frame]:
+    def get_instances(self, label_idx: list[int], frame_idx: list[int]) -> list[Frame]:
         """Get an element of the dataset.
 
         Args:

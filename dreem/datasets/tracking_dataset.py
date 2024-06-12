@@ -5,7 +5,6 @@ from dreem.datasets.microscopy_dataset import MicroscopyDataset
 from dreem.datasets.sleap_dataset import SleapDataset
 from pytorch_lightning import LightningDataModule
 from torch.utils.data import DataLoader
-from typing import Union
 import torch
 
 
@@ -22,18 +21,12 @@ class TrackingDataset(LightningDataModule):
 
     def __init__(
         self,
-        train_ds: Union[
-            SleapDataset, MicroscopyDataset, CellTrackingDataset, None
-        ] = None,
-        train_dl: DataLoader = None,
-        val_ds: Union[
-            SleapDataset, MicroscopyDataset, CellTrackingDataset, None
-        ] = None,
-        val_dl: DataLoader = None,
-        test_ds: Union[
-            SleapDataset, MicroscopyDataset, CellTrackingDataset, None
-        ] = None,
-        test_dl: DataLoader = None,
+        train_ds: SleapDataset | MicroscopyDataset | CellTrackingDataset | None = None,
+        train_dl: DataLoader | None = None,
+        val_ds: SleapDataset | MicroscopyDataset | CellTrackingDataset | None = None,
+        val_dl: DataLoader | None = None,
+        test_ds: SleapDataset | MicroscopyDataset | CellTrackingDataset | None = None,
+        test_dl: DataLoader | None = None,
     ):
         """Initialize tracking dataset.
 

@@ -4,6 +4,7 @@ import warnings
 from dreem.io import Frame
 from collections import deque
 import numpy as np
+from torch import device
 
 
 class TrackQueue:
@@ -154,7 +155,7 @@ class TrackQueue:
         """
         self._verbose = verbose
 
-    def end_tracks(self, track_id: int = None) -> bool:
+    def end_tracks(self, track_id: int | None = None) -> bool:
         """Terminate tracks and removing them from the queue.
 
         Args:
@@ -222,7 +223,9 @@ class TrackQueue:
         )  # should this be done in the tracker or the queue?
 
     def collate_tracks(
-        self, track_ids: list[int] = None, device: str = None
+        self,
+        track_ids: list[int] | None = None,
+        device: str | device | None = None,
     ) -> list[Frame]:
         """Merge queues into a single list of Frames containing corresponding instances.
 

@@ -5,10 +5,10 @@ import sleap_io as sio
 import numpy as np
 import attrs
 from numpy.typing import ArrayLike
-from typing import Union
+from typing import Self
 
 
-def _to_tensor(data: Union[float, ArrayLike]) -> torch.Tensor:
+def _to_tensor(data: float | ArrayLike) -> torch.Tensor:
     """Convert data to a torch.Tensor object.
 
     Args:
@@ -28,8 +28,8 @@ def _to_tensor(data: Union[float, ArrayLike]) -> torch.Tensor:
 
 
 def _expand_to_rank(
-    arr: Union[np.ndarray, torch.Tensor], new_rank: int
-) -> Union[np.ndarray, torch.Tensor]:
+    arr: np.ndarray | torch.Tensor, new_rank: int
+) -> np.ndarray | torch.Tensor:
     """Expand n-dimensional array to appropriate dimensions by adding singleton dimensions to the front of the array.
 
     Args:
@@ -86,10 +86,10 @@ class Instance:
     _embeddings: dict = attrs.field(alias="embeddings", factory=dict)
     _track_score: float = attrs.field(alias="track_score", default=-1.0)
     _instance_score: float = attrs.field(alias="instance_score", default=-1.0)
-    _point_scores: ArrayLike = attrs.field(alias="point_scores", default=None)
-    _skeleton: sio.Skeleton = attrs.field(alias="skeleton", default=None)
+    _point_scores: ArrayLike | None = attrs.field(alias="point_scores", default=None)
+    _skeleton: sio.Skeleton | None = attrs.field(alias="skeleton", default=None)
     _pose: dict[str, ArrayLike] = attrs.field(alias="pose", factory=dict)
-    _device: str = attrs.field(alias="device", default=None)
+    _device: str | torch.device | None = attrs.field(alias="device", default=None)
     _frame: "Frame" = None
 
     def __attrs_post_init__(self) -> None:
@@ -131,7 +131,7 @@ class Instance:
             ")"
         )
 
-    def to(self, map_location: Union[str, torch.device]) -> "Instance":
+    def to(self, map_location: str | torch.device) -> Self:
         """Move instance to different device or change dtype. (See `torch.to` for more info).
 
         Args:
@@ -154,11 +154,11 @@ class Instance:
     @classmethod
     def from_slp(
         cls,
-        slp_instance: Union[sio.PredictedInstance, sio.Instance],
-        bbox_size: Union[int, tuple] = 64,
-        crop: ArrayLike = None,
-        device: str = None,
-    ) -> None:
+        slp_instance: sio.PredictedInstance | sio.Instance,
+        bbox_size: int | tuple[int, int] = 64,
+        crop: ArrayLike | None = None,
+        device: str | None = None,
+    ) -> Self:
         """Convert a slp instance to a dreem instance.
 
         Args:
@@ -472,7 +472,7 @@ class Instance:
         else:
             return True
 
-    def has_embedding(self, emb_type: str = None) -> bool:
+    def has_embedding(self, emb_type: str | None = None) -> bool:
         """Determine if the instance has embedding type requested.
 
         Args:
@@ -485,7 +485,7 @@ class Instance:
 
     def get_embedding(
         self, emb_type: str = "all"
-    ) -> Union[dict[str, torch.Tensor], torch.Tensor, None]:
+    ) -> dict[str, torch.Tensor] | torch.Tensor | None:
         """Retrieve instance's spatial/temporal embedding.
 
         Args:

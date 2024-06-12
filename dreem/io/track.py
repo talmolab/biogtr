@@ -1,7 +1,7 @@
 """Module containing data structures for storing instances of the same Track."""
 
+from __future__ import annotations
 import attrs
-from typing import Union
 
 
 @attrs.define(eq=False)
@@ -77,9 +77,7 @@ class Track:
         """
         return len(self.instances)
 
-    def __getitem__(
-        self, ind: Union[int, list[int]]
-    ) -> Union["Instance", list["Instance"]]:
+    def __getitem__(self, ind: int | list[int]) -> "Instance" | list["Instance"]:
         """Get an instance from the track.
 
         Args:

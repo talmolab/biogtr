@@ -12,7 +12,7 @@ class GlobalTrackingTransformer(torch.nn.Module):
 
     def __init__(
         self,
-        encoder_cfg: dict = None,
+        encoder_cfg: dict | None = None,
         d_model: int = 1024,
         nhead: int = 8,
         num_encoder_layers: int = 6,
@@ -23,7 +23,7 @@ class GlobalTrackingTransformer(torch.nn.Module):
         norm: bool = False,
         num_layers_attn_head: int = 2,
         dropout_attn_head: int = 0.1,
-        embedding_meta: dict = None,
+        embedding_meta: dict | None = None,
         return_embedding: bool = False,
         decoder_self_attn: bool = False,
     ):

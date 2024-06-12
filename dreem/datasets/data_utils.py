@@ -3,7 +3,6 @@
 from PIL import Image
 from numpy.typing import ArrayLike
 from torchvision.transforms import functional as tvf
-from typing import List, Dict, Union
 from xml.etree import cElementTree as et
 import albumentations as A
 import math
@@ -53,7 +52,7 @@ def crop_bbox(img: torch.Tensor, bbox: ArrayLike) -> torch.Tensor:
     return crop
 
 
-def get_bbox(center: ArrayLike, size: Union[int, tuple[int]]) -> torch.Tensor:
+def get_bbox(center: ArrayLike, size: int | tuple[int]) -> torch.Tensor:
     """Get a square bbox around a centroid coordinates.
 
     Args:
@@ -109,7 +108,7 @@ def centroid_bbox(points: ArrayLike, anchors: list, crop_size: int) -> torch.Ten
     return bbox
 
 
-def pose_bbox(points: np.ndarray, bbox_size: Union[tuple[int], int]) -> torch.Tensor:
+def pose_bbox(points: np.ndarray, bbox_size: tuple[int] | int) -> torch.Tensor:
     """Calculate bbox around instance pose.
 
     Args:
@@ -496,7 +495,7 @@ def get_max_padding(height: int, width: int) -> tuple:
 
 
 def view_training_batch(
-    instances: List[Dict[str, List[np.ndarray]]], num_frames: int = 1, cmap=None
+    instances: list[dict[str, list[np.ndarray]]], num_frames: int = 1, cmap=None
 ) -> None:
     """Display a grid of images from a batch of training instances.
 

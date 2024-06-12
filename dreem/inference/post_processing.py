@@ -7,9 +7,9 @@ from dreem.inference.boxes import Boxes
 def weight_decay_time(
     asso_output: torch.Tensor,
     decay_time: float = 0,
-    reid_features: torch.Tensor = None,
-    T: int = None,
-    k: int = None,
+    reid_features: torch.Tensor | None = None,
+    T: int | None = None,
+    k: int | None = None,
 ) -> torch.Tensor:
     """Weight association matrix by time.
 
@@ -90,7 +90,7 @@ def _pairwise_iou(boxes1: Boxes, boxes2: Boxes) -> torch.Tensor:
 
 
 def weight_iou(
-    asso_output: torch.Tensor, method: str = None, last_ious: torch.Tensor = None
+    asso_output: torch.Tensor, method: str | None = None, last_ious: torch.Tensor = None
 ) -> torch.Tensor:
     """Weight the association matrix by the IOU between object bboxes across frames.
 
@@ -123,9 +123,9 @@ def weight_iou(
 def filter_max_center_dist(
     asso_output: torch.Tensor,
     max_center_dist: float = 0,
-    k_boxes: torch.Tensor = None,
-    nonk_boxes: torch.Tensor = None,
-    id_inds: torch.Tensor = None,
+    k_boxes: torch.Tensor | None = None,
+    nonk_boxes: torch.Tensor | None = None,
+    id_inds: torch.Tensor | None = None,
 ) -> torch.Tensor:
     """Filter trajectory score by distances between objects across frames.
 

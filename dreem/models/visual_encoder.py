@@ -1,6 +1,6 @@
 """Module for different visual feature extractors."""
 
-from typing import Tuple, Optional, Any
+from typing import Any
 import torch
 import torchvision
 import timm
@@ -24,7 +24,7 @@ class VisualEncoder(torch.nn.Module):
         d_model: int = 512,
         in_chans: int = 3,
         backend: int = "timm",
-        **kwargs: Optional[Any],
+        **kwargs: Any | None,
     ):
         """Initialize Visual Encoder.
 
@@ -57,7 +57,7 @@ class VisualEncoder(torch.nn.Module):
         )
 
     def select_feature_extractor(
-        self, model_name: str, in_chans: int, backend: str, **kwargs: Optional[Any]
+        self, model_name: str, in_chans: int, backend: str, **kwargs: Any
     ) -> torch.nn.Module:
         """Select the appropriate feature extractor based on config.
 

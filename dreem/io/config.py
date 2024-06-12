@@ -1,9 +1,10 @@
 # to implement - config class that handles getters/setters
 """Data structures for handling config parsing."""
 
+from __future__ import annotations
 from omegaconf import DictConfig, OmegaConf, open_dict
 from pprint import pprint
-from typing import Union, Iterable
+from typing import Iterable
 from pathlib import Path
 import glob
 import pytorch_lightning as pl
@@ -13,7 +14,7 @@ import torch
 class Config:
     """Class handling loading components based on config params."""
 
-    def __init__(self, cfg: DictConfig, params_cfg: DictConfig = None):
+    def __init__(self, cfg: DictConfig, params_cfg: DictConfig | None = None):
         """Initialize the class with config from hydra/omega conf.
 
         First uses `base_param` file then overwrites with specific `params_config`.
@@ -46,7 +47,7 @@ class Config:
         return f"Config({self.cfg})"
 
     @classmethod
-    def from_yaml(cls, base_cfg_path: str, params_cfg_path: str = None) -> None:
+    def from_yaml(cls, base_cfg_path: str, params_cfg_path: str | None = None) -> None:
         """Load config directly from yaml.
 
         Args:
@@ -169,7 +170,7 @@ class Config:
 
     def get_dataset(
         self, mode: str
-    ) -> Union["SleapDataset", "MicroscopyDataset", "CellTrackingDataset"]:
+    ) -> "SleapDataset" | "MicroscopyDataset" | "CellTrackingDataset":
         """Getter for datasets.
 
         Args:
@@ -233,7 +234,7 @@ class Config:
 
     def get_dataloader(
         self,
-        dataset: Union["SleapDataset", "MicroscopyDataset", "CellTrackingDataset"],
+        dataset: "SleapDataset" | "MicroscopyDataset" | "CellTrackingDataset",
         mode: str,
     ) -> torch.utils.data.DataLoader:
         """Getter for dataloader.
@@ -379,8 +380,8 @@ class Config:
 
     def get_trainer(
         self,
-        callbacks: list[pl.callbacks.Callback] = None,
-        logger: pl.loggers.WandbLogger = None,
+        callbacks: list[pl.callbacks.Callback] | None = None,
+        logger: pl.loggers.WandbLogger | None = None,
         devices: int = 1,
         accelerator: str = "auto",
     ) -> pl.Trainer:

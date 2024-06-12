@@ -5,7 +5,6 @@ import numpy as np
 import pandas as pd
 import attrs
 from dreem.io import Instance
-from typing import Union
 
 
 @attrs.define
@@ -18,7 +17,7 @@ class AssociationMatrix:
         query_instances: query instances that were associated against ref instances.
     """
 
-    matrix: Union[np.ndarray, torch.Tensor]
+    matrix: np.ndarray | torch.Tensor
     ref_instances: list[Instance] = attrs.field()
     query_instances: list[Instance] = attrs.field()
 
@@ -164,7 +163,7 @@ class AssociationMatrix:
         self,
         row_dims: str = "instance",
         col_dims: str = "track",
-        row_grouping: str = None,
+        row_grouping: str | None = None,
         col_grouping: str = "pred",
         reduce_method: callable = np.sum,
     ) -> pd.DataFrame:
@@ -220,7 +219,7 @@ class AssociationMatrix:
         return pd.DataFrame(reduced_matrix, index=row_inds, columns=col_inds)
 
     def __getitem__(
-        self, inds: tuple[Union[int, Instance, list[Union[int, Instance]]]]
+        self, inds: tuple[int | Instance | list[int | Instance]]
     ) -> np.ndarray:
         """Get elements of the association matrix.
 
@@ -249,7 +248,7 @@ class AssociationMatrix:
 
     def __getindices__(
         self,
-        instance: Union[Instance, int, np.typing.ArrayLike],
+        instance: Instance | int | np.typing.ArrayLike,
         instance_lookup: list[Instance],
     ) -> np.ndarray:
         """Get the indices of the instance for lookup.

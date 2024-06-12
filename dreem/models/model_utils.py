@@ -1,11 +1,11 @@
 """Module containing model helper functions."""
 
-from typing import List, Tuple, Iterable
+from typing import Iterable
 from pytorch_lightning import loggers
 import torch
 
 
-def get_boxes(instances: List["dreem.io.Instance"]) -> torch.Tensor:
+def get_boxes(instances: list["dreem.io.Instance"]) -> torch.Tensor:
     """Extract the bounding boxes from the input list of instances.
 
     Args:
@@ -30,7 +30,7 @@ def get_boxes(instances: List["dreem.io.Instance"]) -> torch.Tensor:
 
 def get_times(
     ref_instances: list["dreem.io.Instance"],
-    query_instances: list["dreem.io.Instance"] = None,
+    query_instances: list["dreem.io.Instance"] | None = None,
 ) -> tuple[torch.Tensor, torch.Tensor]:
     """Extract the time indices of each instance relative to the window length.
 
@@ -170,7 +170,7 @@ def init_scheduler(
     return scheduler_class(optimizer, **scheduler_params)
 
 
-def init_logger(logger_params: dict, config: dict = None) -> loggers.Logger:
+def init_logger(logger_params: dict, config: dict | None = None) -> loggers.Logger:
     """Initialize logger based on config parameters.
 
     Allows more flexibility in choosing which logger to use.

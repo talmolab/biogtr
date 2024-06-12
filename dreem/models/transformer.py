@@ -39,7 +39,7 @@ class Transformer(torch.nn.Module):
         norm: bool = False,
         num_layers_attn_head: int = 2,
         dropout_attn_head: float = 0.1,
-        embedding_meta: dict = None,
+        embedding_meta: dict | None = None,
         return_embedding: bool = False,
         decoder_self_attn: bool = False,
     ) -> None:
@@ -142,7 +142,7 @@ class Transformer(torch.nn.Module):
     def forward(
         self,
         ref_instances: list["dreem.io.Instance"],
-        query_instances: list["dreem.io.Instance"] = None,
+        query_instances: list["dreem.io.Instance"] | None = None,
     ) -> list[AssociationMatrix]:
         """Execute a forward pass through the transformer and attention head.
 
@@ -381,8 +381,8 @@ class TransformerDecoderLayer(nn.Module):
         self,
         decoder_queries: torch.Tensor,
         encoder_features: torch.Tensor,
-        ref_pos_emb: torch.Tensor = None,
-        query_pos_emb: torch.Tensor = None,
+        ref_pos_emb: torch.Tensor | None = None,
+        query_pos_emb: torch.Tensor | None = None,
     ) -> torch.Tensor:
         """Execute forward pass of decoder layer.
 
@@ -443,7 +443,7 @@ class TransformerEncoder(nn.Module):
         self,
         encoder_layer: TransformerEncoderLayer,
         num_layers: int,
-        norm: nn.Module = None,
+        norm: nn.Module | None = None,
     ) -> None:
         """Initialize transformer encoder.
 
@@ -485,7 +485,7 @@ class TransformerDecoder(nn.Module):
         decoder_layer: TransformerDecoderLayer,
         num_layers: int,
         return_intermediate: bool = False,
-        norm: nn.Module = None,
+        norm: nn.Module | None = None,
     ) -> None:
         """Initialize transformer decoder block.
 
@@ -505,8 +505,8 @@ class TransformerDecoder(nn.Module):
         self,
         decoder_queries: torch.Tensor,
         encoder_features: torch.Tensor,
-        ref_pos_emb: torch.Tensor = None,
-        query_pos_emb: torch.Tensor = None,
+        ref_pos_emb: torch.Tensor | None = None,
+        query_pos_emb: torch.Tensor | None = None,
     ) -> torch.Tensor:
         """Execute a forward pass of the decoder block.
 

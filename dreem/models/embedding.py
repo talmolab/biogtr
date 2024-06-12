@@ -1,6 +1,5 @@
 """Module containing different position and temporal embeddings."""
 
-from typing import Tuple, Optional
 import math
 import torch
 from dreem.models.mlp import MLP
@@ -31,13 +30,13 @@ class Embedding(torch.nn.Module):
         emb_type: str,
         mode: str,
         features: int,
-        n_points: Optional[int] = 1,
-        emb_num: Optional[int] = 16,
-        over_boxes: Optional[bool] = True,
-        temperature: Optional[int] = 10000,
-        normalize: Optional[bool] = False,
-        scale: Optional[float] = None,
-        mlp_cfg: dict = None,
+        n_points: int = 1,
+        emb_num: int = 16,
+        over_boxes: bool = True,
+        temperature: int = 10000,
+        normalize: bool = False,
+        scale: float | None = None,
+        mlp_cfg: dict | None = None,
     ):
         """Initialize embeddings.
 
@@ -333,7 +332,7 @@ class Embedding(torch.nn.Module):
 
         return temp_emb.view(N, self.features)
 
-    def _compute_weights(self, data: torch.Tensor) -> Tuple[torch.Tensor, ...]:
+    def _compute_weights(self, data: torch.Tensor) -> tuple[torch.Tensor, ...]:
         """Compute left and right learned embedding weights.
 
         Args:

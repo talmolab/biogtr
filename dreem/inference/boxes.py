@@ -1,7 +1,7 @@
 """Module containing Boxes class."""
 
-from typing import List, Tuple, Union
 import torch
+from typing import Self
 
 
 class Boxes:
@@ -37,7 +37,7 @@ class Boxes:
 
         self.tensor = tensor
 
-    def clone(self) -> "Boxes":
+    def clone(self) -> Self:
         """Clone the Boxes.
 
         Returns:
@@ -45,7 +45,7 @@ class Boxes:
         """
         return Boxes(self.tensor.clone())
 
-    def to(self, device: torch.device) -> "Boxes":
+    def to(self, device: torch.device) -> Self:
         """Load boxes to gpu/cpu.
 
         Args:
@@ -66,7 +66,7 @@ class Boxes:
         area = (box[:, :, 2] - box[:, :, 0]) * (box[:, :, 3] - box[:, :, 1])
         return area
 
-    def clip(self, box_size: Tuple[int, int]) -> None:
+    def clip(self, box_size: list[int, int]) -> None:
         """Clip (in place) the boxes.
 
         Limits x coordinates to the range [0, width]
@@ -102,7 +102,7 @@ class Boxes:
         keep = (widths > threshold) & (heights > threshold)
         return keep
 
-    def __getitem__(self, item: Union[int, slice, torch.BoolTensor]) -> "Boxes":
+    def __getitem__(self, item: int | slice | torch.BoolTensor) -> "Boxes":
         """Getter for boxes.
 
         Args:
@@ -146,7 +146,7 @@ class Boxes:
         return "Boxes(" + str(self.tensor) + ")"
 
     def inside_box(
-        self, box_size: Tuple[int, int], boundary_threshold: int = 0
+        self, box_size: tuple[int, int], boundary_threshold: int = 0
     ) -> torch.Tensor:
         """Check if box is inside reference box.
 
@@ -181,7 +181,7 @@ class Boxes:
         self.tensor[:, :, 1::2] *= scale_y
 
     @classmethod
-    def cat(cls, boxes_list: List["Boxes"]) -> "Boxes":
+    def cat(cls, boxes_list: list["Boxes"]) -> "Boxes":
         """Concatenates a list of Boxes into a single Boxes.
 
         Arguments:

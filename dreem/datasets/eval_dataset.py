@@ -2,7 +2,6 @@
 
 from torch.utils.data import Dataset
 from dreem.io import Instance, Frame
-from typing import List
 
 
 class EvalDataset(Dataset):
@@ -26,7 +25,7 @@ class EvalDataset(Dataset):
         """
         return len(self.gt_dataset)
 
-    def __getitem__(self, idx: int) -> List[Frame]:
+    def __getitem__(self, idx: int) -> list[Frame]:
         """Get an element of the dataset.
 
         Args:

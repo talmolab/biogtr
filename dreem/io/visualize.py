@@ -4,7 +4,6 @@ from scipy.interpolate import interp1d
 from copy import deepcopy
 from tqdm import tqdm
 from omegaconf import DictConfig
-from typing import Union
 
 import seaborn as sns
 import imageio
@@ -61,7 +60,7 @@ def annotate_video(
     video: "imageio.core.format.Reader",
     labels: pd.DataFrame,
     key: str,
-    color_palette: Union[list, str] = palette,
+    color_palette: list | str = palette,
     trails: int = 2,
     boxes: int = (64, 64),
     names: bool = True,

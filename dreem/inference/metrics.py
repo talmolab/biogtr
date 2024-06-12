@@ -3,7 +3,7 @@
 import numpy as np
 import motmetrics as mm
 import torch
-from typing import Union, Iterable
+from typing import Iterable
 import pandas as pd
 
 # from dreem.inference.post_processing import _pairwise_iou
@@ -237,9 +237,9 @@ def get_track_evals(data: dict, metrics: dict) -> dict:
 
 def get_pymotmetrics(
     data: dict,
-    metrics: Union[str, tuple] = "all",
+    metrics: str | tuple = "all",
     key: str = "tracker_ids",
-    save: str = None,
+    save: str | None = None,
 ) -> pd.DataFrame:
     """Given data and a key, evaluate the predictions.
 

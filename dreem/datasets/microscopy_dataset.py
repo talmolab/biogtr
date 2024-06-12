@@ -3,7 +3,6 @@
 from PIL import Image
 from dreem.datasets import data_utils, BaseDataset
 from dreem.io import Instance, Frame
-from typing import Union
 import albumentations as A
 import numpy as np
 import random
@@ -23,9 +22,9 @@ class MicroscopyDataset(BaseDataset):
         chunk: bool = False,
         clip_length: int = 10,
         mode: str = "Train",
-        augmentations: dict = None,
-        n_chunks: Union[int, float] = 1.0,
-        seed: int = None,
+        augmentations: dict | None = None,
+        n_chunks: int | float = 1.0,
+        seed: int | None = None,
     ):
         """Initialize MicroscopyDataset.
 

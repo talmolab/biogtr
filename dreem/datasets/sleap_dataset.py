@@ -10,7 +10,6 @@ import warnings
 from dreem.io import Instance, Frame
 from dreem.datasets import data_utils, BaseDataset
 from torchvision.transforms import functional as tvf
-from typing import List, Union
 
 
 class SleapDataset(BaseDataset):
@@ -22,14 +21,14 @@ class SleapDataset(BaseDataset):
         video_files: list[str],
         padding: int = 5,
         crop_size: int = 128,
-        anchors: Union[int, list[str], str] = "",
+        anchors: int | list[str] | str = "",
         chunk: bool = True,
         clip_length: int = 500,
         mode: str = "train",
         handle_missing: str = "centroid",
-        augmentations: dict = None,
-        n_chunks: Union[int, float] = 1.0,
-        seed: int = None,
+        augmentations: dict | None = None,
+        n_chunks: int | float = 1.0,
+        seed: int | None = None,
         verbose: bool = False,
     ):
         """Initialize SleapDataset.
@@ -124,7 +123,7 @@ class SleapDataset(BaseDataset):
         """
         return self.label_idx[idx], self.chunked_frame_idx[idx]
 
-    def get_instances(self, label_idx: List[int], frame_idx: List[int]) -> list[Frame]:
+    def get_instances(self, label_idx: list[int], frame_idx: list[int]) -> list[Frame]:
         """Get an element of the dataset.
 
         Args:
