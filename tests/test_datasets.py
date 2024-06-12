@@ -250,10 +250,6 @@ def test_cell_tracking_dataset(cell_tracking):
 
     clip_length = 8
 
-    #     print(cell_tracking[0])
-    #     print(cell_tracking[1])
-    #     print(cell_tracking[2])
-
     train_ds = CellTrackingDataset(
         raw_images=[cell_tracking[0]],
         gt_images=[cell_tracking[1]],

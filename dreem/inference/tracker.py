@@ -2,7 +2,8 @@
 
 import torch
 import pandas as pd
-import warnings
+import logging
+
 from dreem.io import Frame
 from dreem.models import model_utils, GlobalTrackingTransformer
 from dreem.inference.track_queue import TrackQueue
@@ -10,6 +11,8 @@ from dreem.inference import post_processing
 from dreem.inference.boxes import Boxes
 from scipy.optimize import linear_sum_assignment
 from math import inf
+
+logger = logging.getLogger("dreem.inference")
 
 
 class Tracker:
@@ -120,8 +123,7 @@ class Tracker:
         instances_pred = self.sliding_inference(model, frames)
 
         if not self.persistent_tracking:
-            if self.verbose:
-                warnings.warn(f"Clearing Queue after tracking")
+            logger.debug(f"Clearing Queue after tracking")
             self.track_queue.end_tracks()
 
         return instances_pred
@@ -148,16 +150,13 @@ class Tracker:
             tracked_frames = self.track_queue.collate_tracks(
                 device=frame_to_track.frame_id.device
             )
-            if self.verbose:
-                warnings.warn(
-                    f"Current number of tracks is {self.track_queue.n_tracks}"
-                )
+            logger.debug(f"Current number of tracks is {self.track_queue.n_tracks}")
 
             if (
                 self.persistent_tracking and frame_to_track.frame_id == 0
             ):  # check for new video and clear queue
-                if self.verbose:
-                    warnings.warn("New Video! Resetting Track Queue.")
+
+                logger.debug("New Video! Resetting Track Queue.")
                 self.track_queue.end_tracks()
 
             """
@@ -165,10 +164,10 @@ class Tracker:
             """
             if len(self.track_queue) == 0:
                 if frame_to_track.has_instances():
-                    if self.verbose:
-                        warnings.warn(
-                            f"Initializing track on clip ind {batch_idx} frame {frame_to_track.frame_id.item()}"
-                        )
+
+                    logger.debug(
+                        f"Initializing track on clip ind {batch_idx} frame {frame_to_track.frame_id.item()}"
+                    )
 
                     curr_track_id = 0
                     for i, instance in enumerate(frames[batch_idx].instances):
@@ -241,8 +240,7 @@ class Tracker:
         query_instances = query_frame.instances
         all_instances = [instance for frame in frames for instance in frame.instances]
 
-        if self.verbose:
-            print(f"Frame {query_frame.frame_id.item()}")
+        logger.debug(f"Frame {query_frame.frame_id.item()}")
 
         instances_per_frame = [frame.num_detected for frame in frames]
 
@@ -250,8 +248,7 @@ class Tracker:
             instances_per_frame
         )  # Number of instances in window; length of window.
 
-        if self.verbose:
-            print(f"total_instances: {total_instances}")
+        logger.debug(f"total_instances: {total_instances}")
 
         overlap_thresh = self.overlap_thresh
         mult_thresh = self.mult_thresh
@@ -265,10 +262,7 @@ class Tracker:
         # (L=1, n_query, total_instances)
         with torch.no_grad():
             asso_matrix = model(all_instances, query_instances)
-            # if model.transformer.return_embedding:
-            # query_frame.embeddings = embed TODO add embedding to Instance Object
-        # if query_frame == 1:
-        #     print(asso_output)
+
         asso_output = asso_matrix[-1].matrix.split(
             instances_per_frame, dim=1
         )  # (window_size, n_query, N_i)
@@ -288,40 +282,27 @@ class Tracker:
         query_frame.add_traj_score("asso_output", asso_output_df)
         query_frame.asso_output = asso_matrix
 
-        try:
-            n_query = (
-                query_frame.num_detected
-            )  # Number of instances in the current/query frame.
-        except Exception as e:
-            print(len(frames), query_frame, frames[-1])
-            raise (e)
+        n_query = (
+            query_frame.num_detected
+        )  # Number of instances in the current/query frame.
 
         n_nonquery = (
             total_instances - n_query
         )  # Number of instances in the window not including the current/query frame.
 
-        if self.verbose:
-            print(f"n_nonquery: {n_nonquery}")
-            print(f"n_query: {n_query}")
-        try:
-            instance_ids = torch.cat(
-                [
-                    x.get_pred_track_ids()
-                    for batch_idx, x in enumerate(frames)
-                    if batch_idx != query_ind
-                ],
-                dim=0,
-            ).view(
-                n_nonquery
-            )  # (n_nonquery,)
-        except Exception as e:
-            print(
-                [
-                    [instance.pred_track_id.device for instance in frame.instances]
-                    for frame in frames
-                ]
-            )
-            raise (e)
+        logger.debug(f"n_nonquery: {n_nonquery}")
+        logger.debug(f"n_query: {n_query}")
+
+        instance_ids = torch.cat(
+            [
+                x.get_pred_track_ids()
+                for batch_idx, x in enumerate(frames)
+                if batch_idx != query_ind
+            ],
+            dim=0,
+        ).view(
+            n_nonquery
+        )  # (n_nonquery,)
 
         query_inds = [
             x
@@ -350,9 +331,8 @@ class Tracker:
 
         unique_ids = torch.unique(instance_ids)  # (n_nonquery,)
 
-        if self.verbose:
-            print(f"Instance IDs: {instance_ids}")
-            print(f"unique ids: {unique_ids}")
+        logger.debug(f"Instance IDs: {instance_ids}")
+        logger.debug(f"unique ids: {unique_ids}")
 
         id_inds = (
             unique_ids[None, :] == instance_ids[:, None]
@@ -451,13 +431,7 @@ class Tracker:
         query_frame.add_traj_score("scaled", scaled_traj_score_df)
         ################################################################################
 
-        try:
-            match_i, match_j = linear_sum_assignment((-traj_score))
-        except ValueError as e:
-            print(reid_features.isnan().any())
-            print(asso_output)
-            print(traj_score)
-            raise (e)
+        match_i, match_j = linear_sum_assignment((-traj_score))
 
         track_ids = instance_ids.new_full((n_query,), -1)
         for i, j in zip(match_i, match_j):
@@ -471,18 +445,15 @@ class Tracker:
                 overlap_thresh * id_inds[:, j].sum() if mult_thresh else overlap_thresh
             )
             if n_traj >= self.max_tracks or traj_score[i, j] > thresh:
-                if self.verbose:
-                    print(
-                        f"Assigning instance {i} to track {j} with id {unique_ids[j]}"
-                    )
+                logger.debug(
+                    f"Assigning instance {i} to track {j} with id {unique_ids[j]}"
+                )
                 track_ids[i] = unique_ids[j]
                 query_frame.instances[i].track_score = scaled_traj_score[i, j].item()
-        if self.verbose:
-            print(f"track_ids: {track_ids}")
+        logger.debug(f"track_ids: {track_ids}")
         for i in range(n_query):
             if track_ids[i] < 0:
-                if self.verbose:
-                    print(f"Creating new track {n_traj}")
+                logger.debug(f"Creating new track {curr_track}")
                 curr_track += 1
                 track_ids[i] = curr_track
 

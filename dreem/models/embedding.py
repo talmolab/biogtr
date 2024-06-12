@@ -2,8 +2,10 @@
 
 import math
 import torch
+import logging
 from dreem.models.mlp import MLP
 
+logger = logging.getLogger("dreem.models")
 # todo: add named tensors, clean variable names
 
 
@@ -282,7 +284,10 @@ class Embedding(torch.nn.Module):
                 self.emb_num, n_anchors, 4, f
             )  # T x 4 x (D * 4)
         except RuntimeError as e:
-            print(f"Hint: `n_points` ({self.n_points}) may be set incorrectly!")
+            logger.exception(
+                f"Hint: `n_points` ({self.n_points}) may be set incorrectly!"
+            )
+            logger.exception(e)
             raise (e)
 
         left_emb = pos_emb_table.gather(

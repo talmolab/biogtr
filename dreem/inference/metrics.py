@@ -3,8 +3,11 @@
 import numpy as np
 import motmetrics as mm
 import torch
-from typing import Iterable
 import pandas as pd
+import logging
+from typing import Iterable
+
+logger = logging.getLogger("dreem.inference")
 
 # from dreem.inference.post_processing import _pairwise_iou
 # from dreem.inference.boxes import Boxes
@@ -39,8 +42,8 @@ def get_matches(frames: list["dreem.io.Frame"]) -> tuple[dict, list, int]:
                     matches[match] = np.full(len(frames), 0)
 
                 matches[match][idx] = 1
-    # else:
-    #     warnings.warn("No instances detected!")
+    else:
+        logger.debug("No instances detected!")
     return matches, indices, video_id
 
 
@@ -191,12 +194,7 @@ def to_track_eval(frames: list["dreem.io.Frame"]) -> dict:
     data["num_gt_ids"] = len(unique_gt_ids)
     data["num_tracker_dets"] = num_tracker_dets
     data["num_gt_dets"] = num_gt_dets
-    try:
-        data["gt_ids"] = gt_ids
-        # print(data['gt_ids'])
-    except Exception as e:
-        print(gt_ids)
-        raise (e)
+    data["gt_ids"] = gt_ids
     data["tracker_ids"] = track_ids
     data["similarity_scores"] = similarity_scores
     data["num_timesteps"] = len(frames)

@@ -46,13 +46,9 @@ class AssoLoss(nn.Module):
         """
         # get number of detected objects and ground truth ids
         n_t = [frame.num_detected for frame in frames]
-        try:
-            target_inst_id = torch.cat(
-                [frame.get_gt_track_ids().to(asso_preds[-1].device) for frame in frames]
-            )
-        except RuntimeError as e:
-            print([frame.get_gt_track_ids().device for frame in frames])
-            raise (e)
+        target_inst_id = torch.cat(
+            [frame.get_gt_track_ids().to(asso_preds[-1].device) for frame in frames]
+        )
         instances = [instance for frame in frames for instance in frame.instances]
 
         # for now set equal since detections are fixed

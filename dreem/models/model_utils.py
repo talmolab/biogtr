@@ -41,11 +41,8 @@ def get_times(
     Returns:
         Tuple of Corresponding frame indices eg [0, 0, 1, 1, ..., T, T] for ref and query instances.
     """
-    try:
-        ref_inds = torch.concat([instance.frame.frame_id for instance in ref_instances])
-    except RuntimeError as e:
-        print([instance.frame.frame_id.device for instance in ref_instances])
-        raise (e)
+    ref_inds = torch.concat([instance.frame.frame_id for instance in ref_instances])
+
     if query_instances is not None:
         query_inds = torch.concat(
             [instance.frame.frame_id for instance in query_instances]

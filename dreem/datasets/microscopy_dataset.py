@@ -133,7 +133,6 @@ class MicroscopyDataset(BaseDataset):
 
         frames = []
         for frame_id in frame_idx:
-            # print(i)
             instances, gt_track_ids, centroids = [], [], []
 
             img = (

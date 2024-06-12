@@ -1,12 +1,15 @@
 """Module containing data classes such as Instances and Frames."""
 
 from __future__ import annotations
+from numpy.typing import ArrayLike
+from typing import Self
 import torch
 import sleap_io as sio
 import numpy as np
 import attrs
-from numpy.typing import ArrayLike
-from typing import Self
+import logging
+
+logger = logging.getLogger("dreem.io")
 
 
 def _to_tensor(data: float | ArrayLike) -> torch.Tensor:
@@ -411,7 +414,7 @@ class Frame:
             try:
                 return self._traj_score[key]
             except KeyError as e:
-                print(f"Could not access {key} traj_score due to {e}")
+                logger.exception(f"Could not access {key} traj_score due to {e}")
                 return None
 
     def add_traj_score(self, key: str, traj_score: ArrayLike) -> None:
@@ -511,11 +514,8 @@ class Frame:
         """
         if not self.has_instances():
             return torch.tensor([])
-        try:
-            return torch.cat([instance.crop for instance in self.instances], dim=0)
-        except Exception as e:
-            print(self)
-            raise (e)
+
+        return torch.cat([instance.crop for instance in self.instances], dim=0)
 
     def has_features(self) -> bool:
         """Check if any of frames instances has reid features already computed.

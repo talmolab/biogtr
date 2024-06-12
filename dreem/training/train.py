@@ -8,13 +8,16 @@ from dreem.datasets import TrackingDataset
 from dreem.datasets.data_utils import view_training_batch
 from multiprocessing import cpu_count
 from omegaconf import DictConfig
-from pprint import pprint
+
 import os
 import hydra
 import pandas as pd
 import pytorch_lightning as pl
 import torch
 import torch.multiprocessing
+import logging
+
+logger = logging.getLogger("training")
 
 
 @hydra.main(config_path=None, config_name=None, version_base=None)
@@ -43,11 +46,11 @@ def run(cfg: DictConfig):
         hparams = hparams_df.iloc[index].to_dict()
 
         if train_cfg.set_hparams(hparams):
-            print("Updated the following hparams to the following values")
-            pprint(hparams)
+            logger.debug("Updated the following hparams to the following values")
+            logger.debug(hparams)
     else:
         hparams = {}
-    pprint(f"Final train config: {train_cfg}")
+    logger.info(f"Final train config: {train_cfg}")
 
     model = train_cfg.get_model()
     train_dataset = train_cfg.get_dataset(mode="train")
@@ -72,7 +75,7 @@ def run(cfg: DictConfig):
 
     model = train_cfg.get_gtr_runner()  # TODO see if we can use torch.compile()
 
-    logger = train_cfg.get_logger()
+    run_logger = train_cfg.get_logger()
 
     callbacks = []
     _ = callbacks.extend(train_cfg.get_checkpointing())
@@ -84,7 +87,7 @@ def run(cfg: DictConfig):
 
     trainer = train_cfg.get_trainer(
         callbacks,
-        logger,
+        run_logger,
         accelerator=accelerator,
         devices=devices,
     )

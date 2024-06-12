@@ -4,7 +4,11 @@ import torch
 import numpy as np
 import pandas as pd
 import attrs
+import logging
+
 from dreem.io import Instance
+
+logger = logging.getLogger("dreem.io")
 
 
 @attrs.define
@@ -240,10 +244,11 @@ class AssociationMatrix:
         try:
             return self.numpy()[query_ind[:, None], ref_ind].squeeze()
         except IndexError as e:
-            print(f"Query_insts: {type(query_inst)}")
-            print(f"Query_inds: {query_ind}")
-            print(f"Ref_insts: {type(ref_inst)}")
-            print(f"Ref_ind: {ref_ind}")
+            logger.exception(f"Query_insts: {type(query_inst)}")
+            logger.exception(f"Query_inds: {query_ind}")
+            logger.exception(f"Ref_insts: {type(ref_inst)}")
+            logger.exception(f"Ref_ind: {ref_ind}")
+            logger.exception(e)
             raise (e)
 
     def __getindices__(

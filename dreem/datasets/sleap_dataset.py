@@ -6,10 +6,12 @@ import imageio
 import numpy as np
 import sleap_io as sio
 import random
-import warnings
+import logging
 from dreem.io import Instance, Frame
 from dreem.datasets import data_utils, BaseDataset
 from torchvision.transforms import functional as tvf
+
+logger = logging.getLogger("dreem.datasets")
 
 
 class SleapDataset(BaseDataset):
@@ -165,7 +167,9 @@ class SleapDataset(BaseDataset):
                     img = np.expand_dims(img, 0)
                 h, w, c = img.shape
             except IndexError as e:
-                print(f"Could not read frame {frame_ind} from {video_name} due to {e}")
+                logger.warning(
+                    f"Could not read frame {frame_ind} from {video_name} due to {e}"
+                )
                 continue
 
             if len(img.shape) == 2:

@@ -2,14 +2,16 @@
 
 import torch
 import gc
+import logging
 from dreem.inference import Tracker
 from dreem.inference import metrics
 from dreem.models import GlobalTrackingTransformer
 from dreem.training.losses import AssoLoss
 from dreem.models.model_utils import init_optimizer, init_scheduler
 from pytorch_lightning import LightningModule
-from dreem.io.frame import Frame
-from dreem.io.instance import Instance
+
+
+logger = logging.getLogger("dreem.models")
 
 
 class GTRRunner(LightningModule):
@@ -199,7 +201,10 @@ class GTRRunner(LightningModule):
                 return_metrics.update(clearmot.to_dict())
             return_metrics["batch_size"] = len(frames)
         except Exception as e:
-            print(f"Failed on frame {frames[0].frame_id} of video {frames[0].video_id}")
+            logger.exception(
+                f"Failed on frame {frames[0].frame_id} of video {frames[0].video_id}"
+            )
+            logger.exception(e)
             raise (e)
 
         return return_metrics

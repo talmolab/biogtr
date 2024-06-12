@@ -4,8 +4,11 @@ import torch
 import sleap_io as sio
 import numpy as np
 import attrs
+import logging
 from numpy.typing import ArrayLike
 from typing import Self
+
+logger = logging.getLogger("dreem.io")
 
 
 def _to_tensor(data: float | ArrayLike) -> torch.Tensor:
@@ -237,7 +240,7 @@ class Instance:
                 track_lookup,
             )
         except Exception as e:
-            print(
+            logger.exception(
                 f"Pose: {np.array(list(self.pose.values())).shape}, Pose score shape {self.point_scores.shape}"
             )
             raise RuntimeError(f"Failed to convert to sio.PredictedInstance: {e}")
@@ -501,7 +504,7 @@ class Instance:
             try:
                 return self._embeddings[emb_type]
             except KeyError:
-                print(
+                logger.exception(
                     f"{emb_type} not saved! Only {list(self._embeddings.keys())} are available"
                 )
         return None

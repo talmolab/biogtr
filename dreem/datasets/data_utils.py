@@ -90,7 +90,6 @@ def centroid_bbox(points: ArrayLike, anchors: list, crop_size: int) -> torch.Ten
     Returns:
         Bounding box in [y1, x1, y2, x2] format.
     """
-    print(anchors)
     for anchor in anchors:
         cx, cy = points[anchor][0], points[anchor][1]
         if not np.isnan(cx):
@@ -120,7 +119,6 @@ def pose_bbox(points: np.ndarray, bbox_size: tuple[int] | int) -> torch.Tensor:
     """
     if isinstance(bbox_size, int):
         bbox_size = (bbox_size, bbox_size)
-    # print(points)
 
     c = np.nanmean(points, axis=0)
     bbox = torch.Tensor(

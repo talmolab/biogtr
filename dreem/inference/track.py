@@ -4,7 +4,6 @@ from dreem.io import Config
 from dreem.models import GTRRunner
 from omegaconf import DictConfig
 from pathlib import Path
-from pprint import pprint
 
 import hydra
 import os
@@ -12,6 +11,9 @@ import pandas as pd
 import pytorch_lightning as pl
 import torch
 import sleap_io as sio
+import logging
+
+logger = logging.getLogger("dreem.inference")
 
 
 def export_trajectories(
@@ -76,16 +78,13 @@ def track(
         for frame in batch:
             lf, tracks = frame.to_slp(tracks)
             if frame.frame_id.item() == 0:
-                print(f"Video: {lf.video}")
+                logger.info(f"Video: {lf.video}")
             vid_trajectories[frame.video_id.item()].append(lf)
 
     for vid_id, video in vid_trajectories.items():
         if len(video) > 0:
-            try:
-                vid_trajectories[vid_id] = sio.Labels(video)
-            except AttributeError as e:
-                print(video[0].video)
-                raise (e)
+
+            vid_trajectories[vid_id] = sio.Labels(video)
 
     return vid_trajectories
 
@@ -106,7 +105,7 @@ def run(cfg: DictConfig) -> dict[int, sio.Labels]:
         except KeyError:
             index = input("Pod Index Not found! Please choose a pod index: ")
 
-        print(f"Pod Index: {index}")
+        logger.info(f"Pod Index: {index}")
 
         checkpoints = pd.read_csv(cfg.checkpoints)
         checkpoint = checkpoints.iloc[index]
@@ -115,10 +114,10 @@ def run(cfg: DictConfig) -> dict[int, sio.Labels]:
 
     model = GTRRunner.load_from_checkpoint(checkpoint)
     tracker_cfg = pred_cfg.get_tracker_cfg()
-    print("Updating tracker hparams")
+    logger.info("Updating tracker hparams")
     model.tracker_cfg = tracker_cfg
-    print(f"Using the following params for tracker:")
-    pprint(model.tracker_cfg)
+    logger.info(f"Using the following params for tracker:")
+    logger.info(model.tracker_cfg)
 
     dataset = pred_cfg.get_dataset(mode="test")
     dataloader = pred_cfg.get_dataloader(dataset, mode="test")
@@ -139,7 +138,7 @@ def run(cfg: DictConfig) -> dict[int, sio.Labels]:
         if os.path.exists(outpath):
             run_num += 1
             outpath = outpath.replace(f".v{run_num-1}", f".v{run_num}")
-        print(f"Saving {preds} to {outpath}")
+        logger.info(f"Saving {preds} to {outpath}")
         pred.save(outpath)
 
     return preds

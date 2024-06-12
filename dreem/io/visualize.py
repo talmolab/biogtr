@@ -11,6 +11,9 @@ import hydra
 import pandas as pd
 import numpy as np
 import cv2
+import logging
+
+logger = logging.getLogger("dreem.io")
 
 palette = sns.color_palette("tab20")
 
@@ -172,9 +175,6 @@ def annotate_video(
                     )
                     midpt = (int(x), int(y))
 
-                    # print(midpt, type(midpt))
-
-                    # assert idx < len(instance[key])
                     pred_track_id = instance[key]
 
                     if "Track_score" in instance.index:
@@ -194,8 +194,6 @@ def annotate_video(
                         .astype(np.uint8)
                         .tolist()[::-1]
                     )
-
-                    # print(instance[key])
 
                     # Bbox.
                     if boxes is not None:
@@ -266,7 +264,7 @@ def annotate_video(
 
     except Exception as e:
         writer.close()
-        print(e)
+        logger.exception(e)
         return False
 
     writer.close()
@@ -327,9 +325,9 @@ def main(cfg: DictConfig):
     )
 
     if frames_annotated:
-        print("Video saved to {cfg.save_path}!")
+        logger.info("Video saved to {cfg.save_path}!")
     else:
-        print("Failed to annotate video!")
+        logger.error("Failed to annotate video!")
 
 
 if __name__ == "__main__":

@@ -1,10 +1,13 @@
 """Module handling sliding window tracking."""
 
-import warnings
 from dreem.io import Frame
 from collections import deque
-import numpy as np
 from torch import device
+
+import logging
+import numpy as np
+
+logger = logging.getLogger("dreem.inference")
 
 
 class TrackQueue:
@@ -175,7 +178,7 @@ class TrackQueue:
                 self._queues.pop(track_id)
                 self._curr_gap.pop(track_id)
             except KeyError:
-                print(f"Track ID {track_id} not found in queue!")
+                logger.exception(f"Track ID {track_id} not found in queue!")
                 return False
         return True
 
@@ -211,10 +214,9 @@ class TrackQueue:
                 )  # dumb work around to retain `img_shape`
                 self.curr_track = pred_track_id
 
-                if self.verbose:
-                    warnings.warn(
-                        f"New track = {pred_track_id} on frame {frame_id}! Current number of tracks = {self.n_tracks}"
-                    )
+                logger.debug(
+                    f"New track = {pred_track_id} on frame {frame_id}! Current number of tracks = {self.n_tracks}"
+                )
 
             else:
                 self._queues[pred_track_id].append((*frame_meta, instance))
@@ -288,10 +290,9 @@ class TrackQueue:
         for track in self._curr_gap:
             if track not in pred_track_ids:
                 self._curr_gap[track] += 1
-                if self.verbose:
-                    warnings.warn(
-                        f"Track {track} has not been seen for {self._curr_gap[track]} frames."
-                    )
+                logger.debug(
+                    f"Track {track} has not been seen for {self._curr_gap[track]} frames."
+                )
             else:
                 self._curr_gap[track] = 0
             if self._curr_gap[track] >= self.max_gap:
@@ -301,10 +302,9 @@ class TrackQueue:
 
         for track, gap_exceeded in exceeded_gap.items():
             if gap_exceeded:
-                if self.verbose:
-                    warnings.warn(
-                        f"Track {track} has not been seen for {self._curr_gap[track]} frames! Terminating Track...Current number of tracks = {self.n_tracks}."
-                    )
+                logger.debug(
+                    f"Track {track} has not been seen for {self._curr_gap[track]} frames! Terminating Track...Current number of tracks = {self.n_tracks}."
+                )
                 self._queues.pop(track)
                 self._curr_gap.pop(track)
 

@@ -3,12 +3,14 @@
 
 from __future__ import annotations
 from omegaconf import DictConfig, OmegaConf, open_dict
-from pprint import pprint
 from typing import Iterable
 from pathlib import Path
+import logging
 import glob
 import pytorch_lightning as pl
 import torch
+
+logger = logging.getLogger("dreem.io")
 
 
 class Config:
@@ -26,13 +28,13 @@ class Config:
                 training/evaluation
         """
         base_cfg = cfg
-        print(f"Base Config: {cfg}")
+        logger.info(f"Base Config: {cfg}")
 
         if "params_config" in cfg:
             params_cfg = OmegaConf.load(cfg.params_config)
 
         if params_cfg:
-            pprint(f"Overwriting base config with {params_cfg}")
+            logger.info(f"Overwriting base config with {params_cfg}")
             with open_dict(base_cfg):
                 self.cfg = OmegaConf.merge(base_cfg, params_cfg)  # merge configs
         else:
@@ -71,13 +73,13 @@ class Config:
             `True` if config is successfully updated, `False` otherwise
         """
         if hparams == {} or hparams is None:
-            print("Nothing to update!")
+            logger.warning("Nothing to update!")
             return False
         for hparam, val in hparams.items():
             try:
                 OmegaConf.update(self.cfg, hparam, val)
             except Exception as e:
-                print(f"Failed to update {hparam} to {val} due to {e}")
+                logger.exception(f"Failed to update {hparam} to {val} due to {e}")
                 return False
         return True
 
@@ -159,11 +161,11 @@ class Config:
             vid_suff = dir_cfg.vid_suffix
             labels_path = f"{dir_cfg.path}/*{labels_suff}"
             vid_path = f"{dir_cfg.path}/*{vid_suff}"
-            print(f"Searching for labels matching {labels_path}")
+            logger.debug(f"Searching for labels matching {labels_path}")
             label_files = glob.glob(labels_path)
-            print(f"Searching for videos matching {vid_path}")
+            logger.debug(f"Searching for videos matching {vid_path}")
             vid_files = glob.glob(vid_path)
-            print(f"Found {len(label_files)} labels and {len(vid_files)} videos")
+            logger.debug(f"Found {len(label_files)} labels and {len(vid_files)} videos")
             return label_files, vid_files
 
         return None, None
@@ -363,7 +365,7 @@ class Config:
             try:
                 Path(dirpath).mkdir(parents=True, exist_ok=True)
             except OSError as e:
-                print(
+                logger.exception(
                     f"Cannot create a new folder. Check the permissions to the given Checkpoint directory. \n {e}"
                 )
 
